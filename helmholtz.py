@@ -131,7 +131,7 @@ def direct_solver(V, Q, f, k, epsilon):
     return sigmah, uh
 
 
-def solution_plot(mesh, V, Q, f, k, epsilon, iters, u_exact=None):
+def solution_plot(mesh, V, Q, f, k, epsilon, iters, u_exact=None, im=False):
     """
     Plot numerical solutions of direct solver and pHSS algorithm, and the difference
 
@@ -144,6 +144,7 @@ def solution_plot(mesh, V, Q, f, k, epsilon, iters, u_exact=None):
         epsilon: shift, real number greater than 0
         iters: amount of pHSS iterations
         u_exact: if provided plots exact solution instead of direct solver solution
+        im: if True both real and imaginary parts are plotted
     """
     # solving
     sigma_0 = interpolate(Constant((0,0), mesh), V)
@@ -151,39 +152,104 @@ def solution_plot(mesh, V, Q, f, k, epsilon, iters, u_exact=None):
     sigma, u = pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0)
 
     # plotting
-    fig, axes = plt.subplots(ncols=3, figsize=(15, 5), dpi=80)
+    if im:
+        fig, axes = plt.subplots(ncols=3, nrows=2, figsize=(15, 8), dpi=80)
 
-    if u_exact == None: # if no exact solution is provided
-        sigmah, uh = direct_solver(V, Q, f, k, epsilon)
-        collection0 = tripcolor(uh, axes=axes[0], cmap='coolwarm')
-        axes[0].set_title("numerical solution using direct solver")
-        collection2 = tripcolor(assemble(uh - u), axes=axes[2], cmap='coolwarm')
-    else: # if an exact solution is provided
-        collection0 = tripcolor(assemble(interpolate(u_exact, Q)), axes=axes[0], cmap='coolwarm')
-        axes[0].set_title("exact solution")
-        collection2 = tripcolor(assemble(interpolate(u_exact, Q) - u), axes=axes[2], cmap='coolwarm')
-    
-    # plot 1
-    fig.colorbar(collection0, ax=axes[0], orientation='horizontal', fraction=0.046, pad=0.04)
-    axes[0].set_aspect("equal")
-    axes[0].set_xticklabels([])
-    axes[0].set_yticklabels([])
+        if u_exact == None: # if no exact solution is provided
+            sigmah, uh = direct_solver(V, Q, f, k, epsilon)
 
-    # plot 2
-    collection1 = tripcolor(u, axes=axes[1], cmap='coolwarm')
-    fig.colorbar(collection1, ax=axes[1], orientation='horizontal', fraction=0.046, pad=0.04)
-    axes[1].set_aspect("equal")
-    axes[1].set_title("numerical solution using pHSS")
-    axes[1].set_xticklabels([])
-    axes[1].set_yticklabels([])
+            collection0 = tripcolor(assemble(real(uh)), axes=axes[0, 0], cmap='coolwarm')
+            axes[0, 0].set_title("real part of direct solver solution")
+            collection2 = tripcolor(assemble(real(uh - u)), axes=axes[0, 2], cmap='coolwarm')
 
-    # plot 3
-    fig.colorbar(collection2, ax=axes[2], orientation='horizontal', fraction=0.046, pad=0.04)
-    axes[2].set_aspect("equal")
-    axes[2].set_title("difference")
-    axes[2].set_xticklabels([])
-    axes[2].set_yticklabels([])
-    plt.show()
+            collection3 = tripcolor(assemble(imag(uh)), axes=axes[1, 0], cmap='coolwarm')
+            axes[1, 0].set_title("imaginary part of direct solver solution")
+            collection5 = tripcolor(assemble(imag(uh - u)), axes=axes[1, 2], cmap='coolwarm')
+        else: # if an exact solution is provided
+            collection0 = tripcolor(assemble(real(interpolate(u_exact, Q))), axes=axes[0, 0], cmap='coolwarm')
+            axes[0, 0].set_title("real part of exact solution")
+            collection2 = tripcolor(assemble(real(interpolate(real(u_exact), Q) - u)), axes=axes[0, 2], cmap='coolwarm')
+
+            collection3 = tripcolor(assemble(imag(interpolate(u_exact, Q))), axes=axes[1, 0], cmap='coolwarm')
+            axes[1, 0].set_title("imaginary part of exact solution")
+            collection5 = tripcolor(assemble(imag(interpolate(u_exact, Q) - u)), axes=axes[1, 2], cmap='coolwarm')
+        
+        # plot 0
+        fig.colorbar(collection0, ax=axes[0, 0], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[0, 0].set_aspect("equal")
+        axes[0, 0].set_xticklabels([])
+        axes[0, 0].set_yticklabels([])
+
+        # plot 1
+        collection1 = tripcolor(assemble(real(u)), axes=axes[0, 1], cmap='coolwarm')
+        fig.colorbar(collection1, ax=axes[0, 1], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[0, 1].set_aspect("equal")
+        axes[0, 1].set_title("real part of pHSS solution")
+        axes[0, 1].set_xticklabels([])
+        axes[0, 1].set_yticklabels([])
+
+        # plot 2
+        fig.colorbar(collection2, ax=axes[0, 2], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[0, 2].set_aspect("equal")
+        axes[0, 2].set_title("difference")
+        axes[0, 2].set_xticklabels([])
+        axes[0, 2].set_yticklabels([])
+
+        # plot 3
+        fig.colorbar(collection3, ax=axes[1, 0], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[1, 0].set_aspect("equal")
+        axes[1, 0].set_xticklabels([])
+        axes[1, 0].set_yticklabels([])
+
+        # plot 4
+        collection4 = tripcolor(assemble(imag(u)), axes=axes[1, 1], cmap='coolwarm')
+        fig.colorbar(collection4, ax=axes[1, 1], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[1, 1].set_aspect("equal")
+        axes[1, 1].set_title("imaginary part of pHSS solution")
+        axes[1, 1].set_xticklabels([])
+        axes[1, 1].set_yticklabels([])
+
+        # plot 5
+        fig.colorbar(collection5, ax=axes[1, 2], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[1, 2].set_aspect("equal")
+        axes[1, 2].set_title("difference")
+        axes[1, 2].set_xticklabels([])
+        axes[1, 2].set_yticklabels([])
+        plt.show()
+    else:
+        fig, axes = plt.subplots(ncols=3, figsize=(15, 5), dpi=80)
+
+        if u_exact == None: # if no exact solution is provided
+            sigmah, uh = direct_solver(V, Q, f, k, epsilon)
+            collection0 = tripcolor(uh, axes=axes[0], cmap='coolwarm')
+            axes[0].set_title("direct solver solution")
+            collection2 = tripcolor(assemble(uh - u), axes=axes[2], cmap='coolwarm')
+        else: # if an exact solution is provided
+            collection0 = tripcolor(assemble(interpolate(u_exact, Q)), axes=axes[0], cmap='coolwarm')
+            axes[0].set_title("exact solution")
+            collection2 = tripcolor(assemble(interpolate(u_exact, Q) - u), axes=axes[2], cmap='coolwarm')
+        
+        # plot 0
+        fig.colorbar(collection0, ax=axes[0], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[0].set_aspect("equal")
+        axes[0].set_xticklabels([])
+        axes[0].set_yticklabels([])
+
+        # plot 1
+        collection1 = tripcolor(u, axes=axes[1], cmap='coolwarm')
+        fig.colorbar(collection1, ax=axes[1], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[1].set_aspect("equal")
+        axes[1].set_title("pHSS solution")
+        axes[1].set_xticklabels([])
+        axes[1].set_yticklabels([])
+
+        # plot 2
+        fig.colorbar(collection2, ax=axes[2], orientation='horizontal', fraction=0.046, pad=0.04)
+        axes[2].set_aspect("equal")
+        axes[2].set_title("difference")
+        axes[2].set_xticklabels([])
+        axes[2].set_yticklabels([])
+        plt.show()
 
 
 def error_grid_plot(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=None):
