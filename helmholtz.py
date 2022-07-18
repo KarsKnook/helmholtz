@@ -152,7 +152,7 @@ def solution_plot(mesh, V, Q, f, k, epsilon, iters, u_exact=None, im=False):
     sigma, u = pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0)
 
     # plotting
-    if im:
+    if im: # also plotting imaginary component
         fig, axes = plt.subplots(ncols=3, nrows=2, figsize=(15, 8), dpi=80)
 
         if u_exact == None: # if no exact solution is provided
@@ -216,7 +216,7 @@ def solution_plot(mesh, V, Q, f, k, epsilon, iters, u_exact=None, im=False):
         axes[1, 2].set_xticklabels([])
         axes[1, 2].set_yticklabels([])
         plt.show()
-    else:
+    else: # plotting only real component
         fig, axes = plt.subplots(ncols=3, figsize=(15, 5), dpi=80)
 
         if u_exact == None: # if no exact solution is provided
@@ -269,18 +269,20 @@ def error_grid_plot(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=N
     errors = np.zeros((len(epsilon_arr), len(k_arr)))
     
     for i, epsilon in enumerate(epsilon_arr):
-        for j, k in enumerate(k_arr): 
+        for j, k in enumerate(k_arr):
+            # solving for specific k and epsilon
             f = f_function(mesh, k, epsilon)
             sigma_0 = interpolate(Constant((0,0), mesh), V)
             u_0 = interpolate(Constant(0, mesh), Q)
-
             sigma, u = pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0)
-            if u_exact == None:
+
+            if u_exact == None: # if no exact solution is provided
                 sigmah, uh = direct_solver(V, Q, f, k, epsilon)
                 errors[i, j] = errornorm(uh, u)/norm(uh)
-            else:
+            else: # if exact solution is provided
                 errors[i, j] = errornorm(u_exact, u)/norm(u_exact)
     
+    # plotting
     plt.figure(figsize=(8, 6), dpi=80)
     plt.imshow(np.log10(errors), cmap='Reds')
     plt.xticks(np.arange(len(k_arr)), np.round(k_arr,2), rotation=90)
@@ -313,21 +315,22 @@ def convergence_plot(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=
     convergence = np.zeros((len(k_arr), iters))
 
     for i in range(len(k_arr)):
+        # solving
         f = f_function(mesh, k_arr[i], epsilon_arr[i])
         sigma_0 = interpolate(Constant((0,0), mesh), V)
         u_0 = interpolate(Constant(0, mesh), Q)
-
         sigma_store, u_store = pHSS(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, store=True)
 
-        if u_exact == None:
+        if u_exact == None: # if no exact solution is provided
             sigmah, uh = direct_solver(V, Q, f, k_arr[i], epsilon_arr[i])
 
-        for j, u in enumerate(u_store):
-            if u_exact == None:
+        for j, u in enumerate(u_store): #computing the relative error every iteration
+            if u_exact == None: # if no exact solution is provided
                 convergence[i, j] = errornorm(uh, u)/norm(uh)
-            else:
+            else: # if exact solution is provided
                 convergence[i, j] = errornorm(u_exact, u)/norm(u_exact)
 
+    # plotting
     plt.plot(range(1, iters+1), convergence.T)
     plt.xlabel("iterations")
     plt.ylabel("relative error")
