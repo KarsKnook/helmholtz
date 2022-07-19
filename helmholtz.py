@@ -5,26 +5,26 @@ import warnings
 warnings.simplefilter('ignore')
 
 
-def pHSS_iteration(V, Q, f, k, epsilon, sigma_old, u_old):
+def pHSS_iteration(f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v, uh, sigmah):
     """
     Perform one pHSS iteration for the linear variational form of the Helmholtz equation
 
     Input:
-        V: DG(k-1)^d FunctionSpace
-        Q: CGk FunctionSpace
         f: UFL expression for RHS function f
         k: frequency, real number greater than 0
         epsilon: shift, real number greater than 0
-        sigma_old: sigma^n Function
-        u_old: u^n Function
+        sigma_old: sigma^n, DG(k-1)^d Function
+        u_old: u^n, CGk Function
+        sigma_new: sigma^{n+1}, DG(k-1)^d TrialFunction
+        u_new: u^{n+1}, CGk TrialFunction
+        tau: DG(k-1)^d TestFunction
+        v: CGk TestFunction
+        uh: CGk Function
+        sigmah: DG(k-1)^d Function
     Output:
         sigmah: sigma^{n+1}, DG(k-1)^d Function
         uh: u^{n+1}, CGk Function
     """
-    sigma_new = TrialFunction(V)
-    u_new = TrialFunction(Q)
-    tau = TestFunction(V)
-    v = TestFunction(Q)
     
     #solving for u_new
     a = (inner(grad(u_new), grad(v))*dx
@@ -36,7 +36,6 @@ def pHSS_iteration(V, Q, f, k, epsilon, sigma_old, u_old):
                                 - inner(Constant((-epsilon+1j)*k**2)*u_old, v)*ds)
          + inner(Constant((-epsilon+1j)*2*k**2/((k+1)*(-epsilon+k*1j)))*f, v)*dx)
 
-    uh = Function(Q)
     solve(a == L, uh, solver_parameters={"ksp_type": "preonly",
                                          "pc_type": "lu",
                                          "pc_mat_factor_solver_type": "mumps",
@@ -48,7 +47,6 @@ def pHSS_iteration(V, Q, f, k, epsilon, sigma_old, u_old):
                                 + inner(grad(u_old), tau)*dx)
          + inner(grad(uh), tau)*dx)
     
-    sigmah = Function(V)
     solve(a == L, sigmah, solver_parameters={"ksp_type": "preonly", 
                                              "pc_type": "lu",
                                              "pc_mat_factor_solver_type": "mumps",
@@ -68,8 +66,8 @@ def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, store=False):
         k: frequency, real number greater than 0
         epsilon: shift, real number greater than 0
         iters: amount of iterations
-        sigma_0: initial guess for sigma
-        u_0: initial guess for u
+        sigma_0: initial guess for sigma, DG(k-1)^d Function
+        u_0: initial guess for u, CGk Function
         store: if True sigma^{n+1} and u^{n+1} are stored every iteration
     Output:
         sigmah: sigma^{iters}, DG(k-1)^d Function
@@ -80,12 +78,19 @@ def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, store=False):
     sigma = sigma_0
     u = u_0
 
+    sigma_new = TrialFunction(V)
+    u_new = TrialFunction(Q)
+    tau = TestFunction(V)
+    v = TestFunction(Q)
+    uh = Function(Q)
+    sigmah = Function(V)
+
     if store:
         sigma_store = []
         u_store = []
     
     for i in range(iters):
-        sigma, u = pHSS_iteration(V, Q, f, k, epsilon, sigma, u)
+        sigma, u = pHSS_iteration(f, k, epsilon, sigma, u, sigma_new, u_new, tau, v, uh, sigmah)
 
         if store:
             sigma_store.append(sigma)
