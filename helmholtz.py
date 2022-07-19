@@ -5,11 +5,13 @@ import warnings
 warnings.simplefilter('ignore')
 
 
-def pHSS_iteration(f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v, uh, sigmah):
+def pHSS_iteration(V, Q, f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v):
     """
     Perform one pHSS iteration for the linear variational form of the Helmholtz equation
 
     Input:
+        V: DG(k-1)^d FunctionSpace
+        Q: CGk FunctionSpace
         f: UFL expression for RHS function f
         k: frequency, real number greater than 0
         epsilon: shift, real number greater than 0
@@ -19,13 +21,10 @@ def pHSS_iteration(f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v, uh
         u_new: u^{n+1}, CGk TrialFunction
         tau: DG(k-1)^d TestFunction
         v: CGk TestFunction
-        uh: CGk Function
-        sigmah: DG(k-1)^d Function
     Output:
         sigmah: sigma^{n+1}, DG(k-1)^d Function
         uh: u^{n+1}, CGk Function
     """
-    
     #solving for u_new
     a = (inner(grad(u_new), grad(v))*dx
          + inner(Constant((-epsilon+1j)**2*k**2)*u_new, v)*dx
@@ -36,6 +35,7 @@ def pHSS_iteration(f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v, uh
                                 - inner(Constant((-epsilon+1j)*k**2)*u_old, v)*ds)
          + inner(Constant((-epsilon+1j)*2*k**2/((k+1)*(-epsilon+k*1j)))*f, v)*dx)
 
+    uh = Function(Q)
     solve(a == L, uh, solver_parameters={"ksp_type": "preonly",
                                          "pc_type": "lu",
                                          "pc_mat_factor_solver_type": "mumps",
@@ -47,6 +47,7 @@ def pHSS_iteration(f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v, uh
                                 + inner(grad(u_old), tau)*dx)
          + inner(grad(uh), tau)*dx)
     
+    sigmah = Function(V)
     solve(a == L, sigmah, solver_parameters={"ksp_type": "preonly", 
                                              "pc_type": "lu",
                                              "pc_mat_factor_solver_type": "mumps",
@@ -55,7 +56,7 @@ def pHSS_iteration(f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v, uh
     return sigmah, uh
 
 
-def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, store=False):
+def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, solution=None):
     """
     Perform multiple pHSS iterations for the linear variational form of the Helmholtz equation
 
@@ -68,12 +69,10 @@ def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, store=False):
         iters: amount of iterations
         sigma_0: initial guess for sigma, DG(k-1)^d Function
         u_0: initial guess for u, CGk Function
-        store: if True sigma^{n+1} and u^{n+1} are stored every iteration
+        solution: if provided, the relative error to this solution is computed every iteration
     Output:
-        sigmah: sigma^{iters}, DG(k-1)^d Function
-        uh: u^{iters}, CGk Function
-        sigma_store: list of every iteration's sigma
-        u_store: list of every iteration's u
+        (sigmah, uh): (sigma^{iters}, u^{iters}) tuple, DG(k-1)^d and CGk Functions
+        error: numpy array storing relative errors over the iterations
     """
     sigma = sigma_0
     u = u_0
@@ -82,22 +81,19 @@ def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, store=False):
     u_new = TrialFunction(Q)
     tau = TestFunction(V)
     v = TestFunction(Q)
-    uh = Function(Q)
-    sigmah = Function(V)
 
-    if store:
-        sigma_store = []
-        u_store = []
+    if solution != None:
+        error = np.zeros((1, iters))
+        denominator = norm(solution)
     
     for i in range(iters):
-        sigma, u = pHSS_iteration(f, k, epsilon, sigma, u, sigma_new, u_new, tau, v, uh, sigmah)
+        sigma, u = pHSS_iteration(V, Q, f, k, epsilon, sigma, u, sigma_new, u_new, tau, v)
 
-        if store:
-            sigma_store.append(sigma)
-            u_store.append(u)
+        if solution != None:
+            error[0, i] = errornorm(solution, u)/denominator
     
-    if store:
-        return sigma_store, u_store
+    if solution != None:
+        return sigma, u, error
     return sigma, u
 
 
@@ -303,7 +299,7 @@ def error_grid_plot(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=N
     plt.show()
 
 
-def convergence_plot(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=None):
+def error_plot(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=None):
     """
     Plot relative error wrt direct solver solution per pHSS iteration for different values of k and epsilon
 
@@ -317,26 +313,23 @@ def convergence_plot(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=
         iters: amount of pHSS iterations
         u_exact: if provided plots relative error wrt exact solution
     """
-    convergence = np.zeros((len(k_arr), iters))
+    errors = np.zeros((len(k_arr), iters))
 
     for i in range(len(k_arr)):
         # solving
         f = f_function(mesh, k_arr[i], epsilon_arr[i])
         sigma_0 = interpolate(Constant((0,0), mesh), V)
         u_0 = interpolate(Constant(0, mesh), Q)
-        sigma_store, u_store = pHSS(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, store=True)
 
         if u_exact == None: # if no exact solution is provided
             sigmah, uh = direct_solver(V, Q, f, k_arr[i], epsilon_arr[i])
-
-        for j, u in enumerate(u_store): #computing the relative error every iteration
-            if u_exact == None: # if no exact solution is provided
-                convergence[i, j] = errornorm(uh, u)/norm(uh)
-            else: # if exact solution is provided
-                convergence[i, j] = errornorm(u_exact, u)/norm(u_exact)
+            sigma, u, error = pHSS(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, solution=uh)
+        else: # if an exact solution is provided
+            sigma, u, error = pHSS(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, solution=u_exact)
+        errors[i, :] = error
 
     # plotting
-    plt.plot(range(1, iters+1), convergence.T)
+    plt.plot(range(1, iters+1), errors.T)
     plt.xlabel("iterations")
     plt.ylabel("relative error")
     plt.yscale("log")
