@@ -7,7 +7,7 @@ warnings.simplefilter('ignore')
 
 def pHSS_iteration(V, Q, f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v):
     """
-    Perform one pHSS iteration for the linear variational form of the Helmholtz equation
+    Perform one decoupled pHSS iteration for the linear variational form of the Helmholtz equation.
 
     Input:
         V: DG(k-1)^d FunctionSpace
@@ -58,7 +58,7 @@ def pHSS_iteration(V, Q, f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau,
 
 def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, solution=None):
     """
-    Perform multiple pHSS iterations for the linear variational form of the Helmholtz equation
+    Perform multiple decoupled pHSS iterations for the linear variational form of the Helmholtz equation
 
     Input:
         V: DG(k-1)^d FunctionSpace
@@ -84,16 +84,15 @@ def pHSS(V, Q, f, k, epsilon, iters, sigma_0, u_0, solution=None):
 
     if solution != None:
         error = np.zeros((1, iters))
-        denominator = norm(solution)
     
     for i in range(iters):
         sigma, u = pHSS_iteration(V, Q, f, k, epsilon, sigma, u, sigma_new, u_new, tau, v)
 
         if solution != None:
-            error[0, i] = errornorm(solution, u)/denominator
+            error[0, i] = errornorm(solution, u)
     
     if solution != None:
-        return sigma, u, error
+        return sigma, u, error/norm(solution)
     return sigma, u
 
 
@@ -128,8 +127,7 @@ def direct_solver(V, Q, f, k, epsilon):
                                          "pc_mat_factor_solver_type": "mumps",
                                          "mat_type": "aij"})
     
-    sigmah, uh = wh.split()
-    return sigmah, uh
+    return wh.split()
 
 
 def solution_plot(mesh, V, Q, f, k, epsilon, iters, u_exact=None, im=False):

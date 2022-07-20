@@ -7,7 +7,7 @@ warnings.simplefilter('ignore')
 
 def pHSS_iteration1(W, f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v):
     """
-    Perform one pHSS iteration for the linear variational form of the Helmholtz equation
+    Perform one mixed pHSS iteration for the linear variational form of the Helmholtz equation
 
     Input:
         W: mixed FunctionSpace consisting out of DG(k-1)^d and CGk FunctionSpace
@@ -47,7 +47,7 @@ def pHSS_iteration1(W, f, k, epsilon, sigma_old, u_old, sigma_new, u_new, tau, v
 
 def pHSS1(V, Q, f, k, epsilon, iters, sigma_0, u_0, solution=None):
     """
-    Perform multiple pHSS iterations for the linear variational form of the Helmholtz equation
+    Perform multiple mixed pHSS iterations for the linear variational form of the Helmholtz equation
 
     Input:
         V: DG(k-1)^d FunctionSpace
@@ -72,7 +72,6 @@ def pHSS1(V, Q, f, k, epsilon, iters, sigma_0, u_0, solution=None):
 
     if solution != None:
         error = np.zeros((1, iters))
-        denominator = norm(solution)
     
     for i in range(iters):
         wh = pHSS_iteration1(W, f, k, epsilon, sigma, u, sigma_new, u_new, tau, v)
@@ -80,11 +79,10 @@ def pHSS1(V, Q, f, k, epsilon, iters, sigma_0, u_0, solution=None):
 
         if solution != None:
             uh = wh.split()[1]
-            error[0, i] = errornorm(solution, uh)/denominator
+            error[0, i] = errornorm(solution, uh)
 
-    
     if solution != None:
-        return wh.split(), error
+        return wh.split()[0], wh.split()[1], error/norm(solution)
     return wh.split()
 
 
@@ -119,8 +117,7 @@ def direct_solver1(V, Q, f, k, epsilon):
                                          "pc_mat_factor_solver_type": "mumps",
                                          "mat_type": "aij"})
     
-    sigmah, uh = wh.split()
-    return sigmah, uh
+    return wh.split()
 
 
 def solution_plot1(mesh, V, Q, f, k, epsilon, iters, u_exact=None, im=False):
@@ -314,9 +311,9 @@ def error_plot1(mesh, V, Q, f_function, k_arr, epsilon_arr, iters, u_exact=None)
 
         if u_exact == None: # if no exact solution is provided
             sigmah, uh = direct_solver1(V, Q, f, k_arr[i], epsilon_arr[i])
-            (sigma, u), error = pHSS1(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, solution=uh)
+            sigma, u, error = pHSS1(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, solution=uh)
         else: # if an exact solution is provided
-            (sigma, u), error = pHSS1(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, solution=u_exact)
+            sigma, u, error = pHSS1(V, Q, f, k_arr[i], epsilon_arr[i], iters, sigma_0, u_0, solution=u_exact)
         errors[i, :] = error
 
     # plotting
