@@ -2,7 +2,7 @@ from firedrake import *
 import matplotlib.pyplot as plt
 
 
-def build_problem(mesh_size, parameters, k, aP=None, block_matrix=False):
+def build_problem(mesh_size, parameters, k):
     mesh = UnitSquareMesh(mesh_size, mesh_size)
 
     V = VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
@@ -32,21 +32,10 @@ def build_problem(mesh_size, parameters, k, aP=None, block_matrix=False):
                                + inner(Constant(k)*u_old, v)*ds)
         + inner(f, v)*dx)
 
-    if aP is not None:
-        aP = aP(W)
-    if block_matrix:
-        mat_type = 'nest'
-    else:
-        mat_type = 'aij'
-
-    if aP is not None:
-        P = assemble(aP, mat_type=mat_type)
-    else:
-        P = None
-
+    appctx = {"k": k}
     w = Function(W)
-    vpb = LinearVariationalProblem(a, L, w, aP=aP)
-    solver =  LinearVariationalSolver(vpb, solver_parameters=parameters)
+    vpb = LinearVariationalProblem(a, L, w)
+    solver = LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
 
     return solver, w
 
@@ -63,7 +52,8 @@ class pHSS_PC(preconditioners.base.PCBase):
         context = P.getPythonContext()
 
         k = context.appctx.get("k", 1.0)
-        epsilon = context.appctx.get("epsilon", 1.0)
+        epsilon = petsc.PETSc.Options().getReal(options_prefix + "epsilon")
+        print(epsilon)
 
         test, trial = context.a.arguments()
 
@@ -74,7 +64,6 @@ class pHSS_PC(preconditioners.base.PCBase):
 
         sigma_new, u_new = TrialFunctions(W)
         tau, v = TestFunction(W)
-        # Handle vector and tensor-valued spaces.
 
         a = Constant((epsilon-1j*k)*(k+1)/(2*k))*(inner(Constant((epsilon-1j)*k)*sigma_new, tau)*dx
                                                   - inner(grad(u_new), tau)*dx
@@ -111,11 +100,14 @@ class pHSS_PC(preconditioners.base.PCBase):
 
     def view(self, pc, viewer=None):
         super(pHSS_PC, self).view(pc, viewer)
-        viewer.printfASCII("KSP solver for M^-1\n")
+        viewer.printfASCII("pHSS preconditioner for indefinite helmholtz equation")
         self.ksp.view(viewer)
 
 
 #testing the preconditioner
+n = 10
+k = 1
+
 parameters = {
     "ksp_type": "preonly",
     "pc_python_type": __name__ + ".pHSS_PC"
@@ -131,11 +123,8 @@ parameters = {
     "helmhss_fieldsplit_0_pc_type": "ilu",
     "helmhss_fieldsplit_1_ksp_type": "preonly",
     "helmhss_fieldsplit_1_pc_type": "lu",
+    "helmhss_epsilon": 1
 }"""
-
-n = 10
-k = 1
-epsilon = 1
 
 solver, w = build_problem(n, parameters, k)
 solver.solve()
