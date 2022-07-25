@@ -1,46 +1,47 @@
-from firedrake import *
+import firedrake as fd
 import matplotlib.pyplot as plt
+from firedrake.petsc import PETSc
 
 
 def build_problem(mesh_size, parameters, k):
-    mesh = UnitSquareMesh(mesh_size, mesh_size)
+    mesh = fd.UnitSquareMesh(mesh_size, mesh_size)
 
-    V = VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
-    Q = FunctionSpace(mesh, "CG", degree=2)
+    V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
+    Q = fd.FunctionSpace(mesh, "CG", degree=2)
     W = V * Q
 
-    sigma_old = interpolate(Constant((0,0), mesh), V)
-    u_old = interpolate(Constant(0, mesh), Q)
+    sigma_old = fd.interpolate(fd.Constant((0,0), mesh), V)
+    u_old = fd.interpolate(fd.Constant(0, mesh), Q)
 
-    sigma_new, u_new = TrialFunctions(W)
-    tau, v = TestFunctions(W)
+    sigma_new, u_new = fd.TrialFunctions(W)
+    tau, v = fd.TestFunctions(W)
 
-    x, y = SpatialCoordinate(mesh)
-    f = (-k**2*sin(pi*x)**2*sin(pi*y)**2
-         + pi**2*(cos(2*pi*(x+y)) + cos(2*pi*(x-y)) - cos(2*pi*x) - cos(2*pi*y)))
+    x, y = fd.SpatialCoordinate(mesh)
+    f = (-k**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
+         + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
-    a = Constant(-1j*(k+1)/2)*(inner(Constant(-1j*k)*sigma_new, tau)*dx
-                                                - inner(grad(u_new), tau)*dx
-                                                + inner(sigma_new, grad(v))*dx
-                                                + inner(Constant(-1j*k)*u_new, v)*dx
-                                                + inner(Constant(k)*u_new,v)*ds)
+    a = fd.Constant(-1j*(k+1)/2)*(fd.inner(fd.Constant(-1j*k)*sigma_new, tau)*fd.dx
+                                                - fd.inner(fd.grad(u_new), tau)*fd.dx
+                                                + fd.inner(sigma_new, fd.grad(v))*fd.dx
+                                                + fd.inner(fd.Constant(-1j*k)*u_new, v)*fd.dx
+                                                + fd.inner(fd.Constant(k)*u_new,v)*fd.ds)
 
-    L = (Constant((1-k)/2)*(inner(Constant(1j*k)*sigma_old, tau)*dx
-                               + inner(grad(u_old), tau)*dx
-                               - inner(sigma_old, grad(v))*dx
-                               + inner(Constant(1j*k)*u_old, v)*dx
-                               + inner(Constant(k)*u_old, v)*ds)
-        + inner(f, v)*dx)
+    L = (fd.Constant((1-k)/2)*(fd.inner(fd.Constant(1j*k)*sigma_old, tau)*fd.dx
+                               + fd.inner(fd.grad(u_old), tau)*fd.dx
+                               - fd.inner(sigma_old, fd.grad(v))*fd.dx
+                               + fd.inner(fd.Constant(1j*k)*u_old, v)*fd.dx
+                               + fd.inner(fd.Constant(k)*u_old, v)*fd.ds)
+        + fd.inner(f, v)*fd.dx)
 
     appctx = {"k": k}
-    w = Function(W)
-    vpb = LinearVariationalProblem(a, L, w)
-    solver = LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
+    w = fd.Function(W)
+    vpb = fd.LinearVariationalProblem(a, L, w)
+    solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
 
     return solver, w
 
 
-class pHSS_PC(preconditioners.base.PCBase):
+class pHSS_PC(fd.preconditioners.base.PCBase):
 
     needs_python_pmat = True
 
@@ -52,8 +53,7 @@ class pHSS_PC(preconditioners.base.PCBase):
         context = P.getPythonContext()
 
         k = context.appctx.get("k", 1.0)
-        epsilon = petsc.PETSc.Options().getReal(options_prefix + "epsilon")
-        print(epsilon)
+        epsilon = PETSc.Options().getReal(options_prefix + "epsilon")
 
         test, trial = context.a.arguments()
 
@@ -62,20 +62,20 @@ class pHSS_PC(preconditioners.base.PCBase):
 
         W = test.function_space()
 
-        sigma_new, u_new = TrialFunctions(W)
-        tau, v = TestFunction(W)
+        sigma_new, u_new = fd.TrialFunctions(W)
+        tau, v = fd.TestFunctions(W)
 
-        a = Constant((epsilon-1j*k)*(k+1)/(2*k))*(inner(Constant((epsilon-1j)*k)*sigma_new, tau)*dx
-                                                  - inner(grad(u_new), tau)*dx
-                                                  + inner(sigma_new, grad(v))*dx
-                                                  + inner(Constant((epsilon-1j)*k)*u_new, v)*dx
-                                                  + inner(Constant(k)*u_new,v)*ds)
+        a = fd.Constant((epsilon-1j*k)*(k+1)/(2*k))*(fd.inner(fd.Constant((epsilon-1j)*k)*sigma_new, tau)*fd.dx
+                                                  - fd.inner(fd.grad(u_new), tau)*fd.dx
+                                                  + fd.inner(sigma_new, fd.grad(v))*fd.dx
+                                                  + fd.inner(fd.Constant((epsilon-1j)*k)*u_new, v)*fd.dx
+                                                  + fd.inner(fd.Constant(k)*u_new,v)*fd.ds)
 
-        opts = petsc.PETSc.Options()
+        opts = PETSc.Options()
         mat_type = opts.getString(options_prefix + "mat_type",
-                                  parameters["default_matrix_type"])
+                                  fd.parameters["default_matrix_type"])
 
-        A = assemble(a, form_compiler_parameters=context.fc_params,
+        A = fd.assemble(a, form_compiler_parameters=context.fc_params,
                      mat_type=mat_type, options_prefix=options_prefix)
 
         Pmat = A.petscmat
@@ -84,7 +84,7 @@ class pHSS_PC(preconditioners.base.PCBase):
         if tnullsp.handle != 0:
             Pmat.setTransposeNullSpace(tnullsp)
 
-        ksp = petsc.PETSc.KSP().create(comm=pc.comm)
+        ksp = PETSc.KSP().create(comm=pc.comm)
         ksp.incrementTabLevel(1, parent=pc)
         ksp.setOperators(Pmat)
         ksp.setOptionsPrefix(options_prefix)
@@ -110,15 +110,17 @@ class pHSS_PC(preconditioners.base.PCBase):
 n = 10
 k = 1
 
-parameters = {
-    "ksp_type": "preonly",
-    'pc_type': 'python',
-    "pc_python_type": __name__ + ".pHSS_PC"
-}
-
 """parameters = {
+    "ksp_type": "preonly",
+    "pc_type": "python",
+    "pc_python_type": __name__ + ".pHSS_PC",
+    "helmhss_epsilon": 1,
+    "mat_type": "matfree"
+}"""
+
+parameters = {
     "ksp_type": "gmres",
-    'pc_type': 'python',
+    "pc_type": "python",
     "pc_python_type": __name__ + ".pHSS_PC",
     "helmhss_pc_type": "fieldsplit",
     "helmhss_pc_fieldsplit_type": "schur",
@@ -127,13 +129,14 @@ parameters = {
     "helmhss_fieldsplit_0_pc_type": "ilu",
     "helmhss_fieldsplit_1_ksp_type": "preonly",
     "helmhss_fieldsplit_1_pc_type": "lu",
-    "helmhss_epsilon": 1
-}"""
+    "helmhss_epsilon": 1,
+    "mat_type": "matfree"
+}
 
 solver, w = build_problem(n, parameters, k)
 solver.solve()
 
 sigma, u = w.split()
-collection = tripcolor(u, cmap='coolwarm')
+collection = fd.tripcolor(u, cmap='coolwarm')
 plt.colorbar(collection)
 plt.show()
