@@ -98,6 +98,8 @@ class pHSS_PC(preconditioners.base.PCBase):
     def apply(self, pc, X, Y):
         self.ksp.solve(X, Y)
 
+    applyTranspose = apply
+    
     def view(self, pc, viewer=None):
         super(pHSS_PC, self).view(pc, viewer)
         viewer.printfASCII("pHSS preconditioner for indefinite helmholtz equation")
@@ -110,11 +112,13 @@ k = 1
 
 parameters = {
     "ksp_type": "preonly",
+    'pc_type': 'python',
     "pc_python_type": __name__ + ".pHSS_PC"
 }
 
 """parameters = {
     "ksp_type": "gmres",
+    'pc_type': 'python',
     "pc_python_type": __name__ + ".pHSS_PC",
     "helmhss_pc_type": "fieldsplit",
     "helmhss_pc_fieldsplit_type": "schur",
