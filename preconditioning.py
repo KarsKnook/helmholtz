@@ -2,7 +2,7 @@ from firedrake import *
 import matplotlib.pyplot as plt
 
 
-def build_problem(mesh_size, parameters, k, epsilon, aP=None, block_matrix=False):
+def build_problem(mesh_size, parameters, k, aP=None, block_matrix=False):
     mesh = UnitSquareMesh(mesh_size, mesh_size)
 
     V = VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
@@ -14,26 +14,23 @@ def build_problem(mesh_size, parameters, k, epsilon, aP=None, block_matrix=False
 
     sigma_new, u_new = TrialFunctions(W)
     tau, v = TestFunctions(W)
-    f = Function(V)
 
-    def f_function(mesh, k, epsilon):
-        x, y = SpatialCoordinate(mesh)
-        return ((-epsilon + k*1j)**2*sin(pi*x)**2*sin(pi*y)**2
-                + pi**2*(cos(2*pi*(x+y)) + cos(2*pi*(x-y)) - cos(2*pi*x) - cos(2*pi*y)))
+    x, y = SpatialCoordinate(mesh)
+    f = (-k**2*sin(pi*x)**2*sin(pi*y)**2
+         + pi**2*(cos(2*pi*(x+y)) + cos(2*pi*(x-y)) - cos(2*pi*x) - cos(2*pi*y)))
 
-    f = f_function(mesh, k, epsilon)
+    a = Constant(-1j*(k+1)/2)*(inner(Constant(-1j*k)*sigma_new, tau)*dx
+                                                - inner(grad(u_new), tau)*dx
+                                                + inner(sigma_new, grad(v))*dx
+                                                + inner(Constant(-1j*k)*u_new, v)*dx
+                                                + inner(Constant(k)*u_new,v)*ds)
 
-    a = (inner(Constant((epsilon-1j)*k)*sigma_new, tau)*dx
-         - inner(grad(u_new), tau)*dx
-         + inner(sigma_new, grad(v))*dx
-         + inner(Constant((epsilon-1j)*k)*u_new, v)*dx
-         + inner(Constant(k)*u_new,v)*ds)
-    L = (Constant((k-1)/(k+1))*(inner(Constant((epsilon+1j)*k)*sigma_old, tau)*dx
+    L = (Constant((1-k)/2)*(inner(Constant(1j*k)*sigma_old, tau)*dx
                                + inner(grad(u_old), tau)*dx
                                - inner(sigma_old, grad(v))*dx
-                               + inner(Constant((epsilon+1j)*k)*u_old, v)*dx
+                               + inner(Constant(1j*k)*u_old, v)*dx
                                + inner(Constant(k)*u_old, v)*ds)
-        - Constant(2*k/(k+1))*inner(f/Constant(-epsilon+1j*k), v)*dx)
+        + inner(f, v)*dx)
 
     if aP is not None:
         aP = aP(W)
@@ -60,7 +57,7 @@ class pHSS_PC(preconditioners.base.PCBase):
 
     def initialize(self, pc):
         prefix = pc.getOptionsPrefix()
-        options_prefix = prefix + "pHSSp_"
+        options_prefix = prefix + "helmhss_"
         # we assume P has things stuffed inside of it
         _, P = pc.getOperators()
         context = P.getPythonContext()
@@ -112,18 +109,35 @@ class pHSS_PC(preconditioners.base.PCBase):
     def apply(self, pc, X, Y):
         self.ksp.solve(X, Y)
 
+    def view(self, pc, viewer=None):
+        super(pHSS_PC, self).view(pc, viewer)
+        viewer.printfASCII("KSP solver for M^-1\n")
+        self.ksp.view(viewer)
+
 
 #testing the preconditioner
 parameters = {
     "ksp_type": "preonly",
-    "pc_python_type": __name__ + ".pHSS_PC" #instead of pc_type
+    "pc_python_type": __name__ + ".pHSS_PC"
 }
+
+"""parameters = {
+    "ksp_type": "gmres",
+    "pc_python_type": __name__ + ".pHSS_PC",
+    "helmhss_pc_type": "fieldsplit",
+    "helmhss_pc_fieldsplit_type": "schur",
+    "helmhss_pc_fieldsplit_schur_fact_type": "full",
+    "helmhss_fieldsplit_0_ksp_type": "preonly",
+    "helmhss_fieldsplit_0_pc_type": "ilu",
+    "helmhss_fieldsplit_1_ksp_type": "preonly",
+    "helmhss_fieldsplit_1_pc_type": "lu",
+}"""
 
 n = 10
 k = 1
 epsilon = 1
 
-solver, w = build_problem(n, parameters, k, epsilon)
+solver, w = build_problem(n, parameters, k)
 solver.solve()
 
 sigma, u = w.split()
