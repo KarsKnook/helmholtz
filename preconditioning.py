@@ -14,15 +14,15 @@ def build_problem(mesh_size, parameters, k, epsilon):
     tau, v = fd.TestFunctions(W)
 
     x, y = fd.SpatialCoordinate(mesh)
-    f = (-k**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
+    f = ((-epsilon+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
          + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
-    a = (fd.inner(fd.Constant(-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(epsilon-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
-         + fd.inner(fd.Constant(-1j*k)*u, v)*fd.dx
+         + fd.inner(fd.Constant(epsilon-1j*k)*u, v)*fd.dx
          + fd.inner(u, v)*fd.ds)
-    L = - fd.inner(f/fd.Constant(1j*k), v)*fd.dx
+    L = - fd.inner(f/fd.Constant(-epsilon+1j*k), v)*fd.dx
 
     appctx = {"k": k, "epsilon": epsilon}
     w = fd.Function(W)
@@ -56,10 +56,10 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         tau, v = fd.TestFunctions(W)
 
         a = fd.Constant((epsilon-1j*k)*(k+1)/(2*k))*(fd.inner(fd.Constant((epsilon-1j)*k)*sigma_new, tau)*fd.dx
-                                                  - fd.inner(fd.grad(u_new), tau)*fd.dx
-                                                  + fd.inner(sigma_new, fd.grad(v))*fd.dx
-                                                  + fd.inner(fd.Constant((epsilon-1j)*k)*u_new, v)*fd.dx
-                                                  + fd.inner(fd.Constant(k)*u_new,v)*fd.ds)
+                                                     - fd.inner(fd.grad(u_new), tau)*fd.dx
+                                                     + fd.inner(sigma_new, fd.grad(v))*fd.dx
+                                                     + fd.inner(fd.Constant((epsilon-1j)*k)*u_new, v)*fd.dx
+                                                     + fd.inner(fd.Constant(k)*u_new,v)*fd.ds)
 
         opts = PETSc.Options()
         mat_type = opts.getString(options_prefix + "mat_type",
@@ -122,6 +122,9 @@ parameters = {
     "helmhss_fieldsplit_1_pc_type": "lu",
     "helmhss_mat_type": "nest",
     "mat_type": "matfree",
+    "ksp_monitor": None,
+    "ksp_converged_reason": None,
+    "ksp_rtol": 1e-15
 }
 
 solver, w = build_problem(n, parameters, k, epsilon)
