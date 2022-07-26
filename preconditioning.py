@@ -1,39 +1,30 @@
 import firedrake as fd
-import matplotlib.pyplot as plt
 from firedrake.petsc import PETSc
+import matplotlib.pyplot as plt
 
 
-def build_problem(mesh_size, parameters, k):
+def build_problem(mesh_size, parameters, k, epsilon):
     mesh = fd.UnitSquareMesh(mesh_size, mesh_size)
 
     V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
     Q = fd.FunctionSpace(mesh, "CG", degree=2)
     W = V * Q
 
-    sigma_old = fd.interpolate(fd.Constant((0,0), mesh), V)
-    u_old = fd.interpolate(fd.Constant(0, mesh), Q)
-
-    sigma_new, u_new = fd.TrialFunctions(W)
+    sigma, u = fd.TrialFunctions(W)
     tau, v = fd.TestFunctions(W)
 
     x, y = fd.SpatialCoordinate(mesh)
     f = (-k**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
          + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
-    a = fd.Constant(-1j*(k+1)/2)*(fd.inner(fd.Constant(-1j*k)*sigma_new, tau)*fd.dx
-                                                - fd.inner(fd.grad(u_new), tau)*fd.dx
-                                                + fd.inner(sigma_new, fd.grad(v))*fd.dx
-                                                + fd.inner(fd.Constant(-1j*k)*u_new, v)*fd.dx
-                                                + fd.inner(fd.Constant(k)*u_new,v)*fd.ds)
+    a = (fd.inner(fd.Constant(-1j*k)*sigma, tau)*fd.dx
+         - fd.inner(fd.grad(u), tau)*fd.dx
+         + fd.inner(sigma, fd.grad(v))*fd.dx
+         + fd.inner(fd.Constant(-1j*k)*u, v)*fd.dx
+         + fd.inner(u, v)*fd.ds)
+    L = - fd.inner(f/fd.Constant(1j*k), v)*fd.dx
 
-    L = (fd.Constant((1-k)/2)*(fd.inner(fd.Constant(1j*k)*sigma_old, tau)*fd.dx
-                               + fd.inner(fd.grad(u_old), tau)*fd.dx
-                               - fd.inner(sigma_old, fd.grad(v))*fd.dx
-                               + fd.inner(fd.Constant(1j*k)*u_old, v)*fd.dx
-                               + fd.inner(fd.Constant(k)*u_old, v)*fd.ds)
-        + fd.inner(f, v)*fd.dx)
-
-    appctx = {"k": k}
+    appctx = {"k": k, "epsilon": epsilon}
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
@@ -42,7 +33,6 @@ def build_problem(mesh_size, parameters, k):
 
 
 class pHSS_PC(fd.preconditioners.base.PCBase):
-
     needs_python_pmat = True
 
     def initialize(self, pc):
@@ -53,7 +43,7 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         context = P.getPythonContext()
 
         k = context.appctx.get("k", 1.0)
-        epsilon = PETSc.Options().getReal(options_prefix + "epsilon")
+        epsilon = context.appctx.get("epsilon", 1.0)
 
         test, trial = context.a.arguments()
 
@@ -109,6 +99,7 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
 #testing the preconditioner
 n = 10
 k = 1
+epsilon = 1
 
 """parameters = {
     "ksp_type": "preonly",
@@ -129,11 +120,11 @@ parameters = {
     "helmhss_fieldsplit_0_pc_type": "ilu",
     "helmhss_fieldsplit_1_ksp_type": "preonly",
     "helmhss_fieldsplit_1_pc_type": "lu",
-    "helmhss_epsilon": 1,
-    "mat_type": "matfree"
+    "helmhss_mat_type": "nest",
+    "mat_type": "matfree",
 }
 
-solver, w = build_problem(n, parameters, k)
+solver, w = build_problem(n, parameters, k, epsilon)
 solver.solve()
 
 sigma, u = w.split()
