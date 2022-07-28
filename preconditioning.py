@@ -44,6 +44,7 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         # we assume P has things stuffed inside of it
         _, P = pc.getOperators()
         context = P.getPythonContext()
+        self.context = context
 
         k = context.appctx.get("k", 1.0)
         epsilon = context.appctx.get("epsilon", 1.0)
@@ -85,11 +86,35 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         ksp.setUp()
         self.ksp = ksp
 
+        self.w = fd.Function(W)
+        self.F = fd.Function(W)
+        self.its = PETSc.Options().getInt(options_prefix + "its")
+
+        #change factor
+        w_old = fd.Function(W)
+        sigma_old, u_old = w_old.split()
+        self.hss_rhs = (fd.Constant((k-1)/(k+1))*(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
+                                                + fd.inner(fd.grad(u_old), tau)*fd.dx
+                                                - fd.inner(sigma_old, fd.grad(v))*fd.dx
+                                                + fd.inner(fd.Constant((epsilon+1j)*k)*u_old, v)*fd.dx
+                                                + fd.inner(fd.Constant(k)*u_old, v)*fd.ds)
+                        - fd.Constant(2*k/(k+1))*fd.inner(f/fd.Constant(-epsilon+1j*k), v)*fd.dx)
+
     def update(self, pc):
         pass
 
     def apply(self, pc, X, Y):
-        self.ksp.solve(X, Y)
+        #first solve
+        with self.w.dat.vec_wo as w_:
+            self.ksp.solve(X, w_)
+
+        #all other solves
+        for i in range(self.its - 1):
+            sigma_old, u_old = self.w.split()
+            fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.F)
+
+            with self.u.dat.vec_wo, self.F.dat.vec_ro as u_, F_:
+                self.ksp.solve(F_, u_)
 
     applyTranspose = apply
     
