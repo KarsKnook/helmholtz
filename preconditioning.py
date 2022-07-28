@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 
 
 def build_problem(mesh_size, parameters, k, epsilon):
+    """
+    Original (non-shifted) problem
+    """
     mesh = fd.UnitSquareMesh(mesh_size, mesh_size)
 
     V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
@@ -14,15 +17,15 @@ def build_problem(mesh_size, parameters, k, epsilon):
     tau, v = fd.TestFunctions(W)
 
     x, y = fd.SpatialCoordinate(mesh)
-    f = ((-epsilon+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
+    f = (-k**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
          + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
-    a = (fd.inner(fd.Constant(epsilon-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
-         + fd.inner(fd.Constant(epsilon-1j*k)*u, v)*fd.dx
+         + fd.inner(fd.Constant(-1j*k)*u, v)*fd.dx
          + fd.inner(u, v)*fd.ds)
-    L = - fd.inner(f/fd.Constant(-epsilon+1j*k), v)*fd.dx
+    L = - fd.inner(f/fd.Constant(+1j*k), v)*fd.dx
 
     appctx = {"k": k, "epsilon": epsilon}
     w = fd.Function(W)
@@ -101,18 +104,12 @@ n = 10
 k = 1
 epsilon = 1
 
-"""parameters = {
-    "ksp_type": "preonly",
-    "pc_type": "python",
-    "pc_python_type": __name__ + ".pHSS_PC",
-    "helmhss_epsilon": 1,
-    "mat_type": "matfree"
-}"""
-
 parameters = {
     "ksp_type": "gmres",
+    "ksp_gmres_restart": 100,
     "pc_type": "python",
     "pc_python_type": __name__ + ".pHSS_PC",
+    "helmhss_ksp_type": "preonly",
     "helmhss_pc_type": "fieldsplit",
     "helmhss_pc_fieldsplit_type": "schur",
     "helmhss_pc_fieldsplit_schur_fact_type": "full",
@@ -124,8 +121,31 @@ parameters = {
     "mat_type": "matfree",
     "ksp_monitor": None,
     "ksp_converged_reason": None,
-    "ksp_rtol": 1e-15
+    #"ksp_view": None,
 }
+
+"""parameters = {
+    "ksp_type": "gmres",
+    "ksp_gmres_restart": 100,
+    "pc_type": "fieldsplit",
+    "pc_fieldsplit_type": "schur",
+    "pc_fieldsplit_schur_fact_type": "full",
+    "fieldsplit_0_ksp_type": "preonly",
+    "fieldsplit_0_pc_type": "ilu",
+    "fieldsplit_1_ksp_type": "preonly",
+    "fieldsplit_1_pc_type": "lu",
+    "ksp_monitor": None,
+    "ksp_converged_reason": None,
+    #"ksp_view": None,
+}"""
+
+"""parameters = {
+    "ksp_type": "gmres",
+    "pc_type": 'none',
+    "ksp_monitor": None,
+    "ksp_converged_reason": None,
+    #"ksp_view": None,
+}"""
 
 solver, w = build_problem(n, parameters, k, epsilon)
 solver.solve()
