@@ -92,7 +92,6 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
 
         w_old = fd.Function(W)
         sigma_old, u_old = w_old.split()
-
         f = context.appctx.get("f")
         self.hss_rhs = (fd.Constant((k-1)*(epsilon-1j*k)/(2*k))*(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
                                                                 + fd.inner(fd.grad(u_old), tau)*fd.dx
@@ -114,8 +113,12 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
             sigma_old, u_old = self.w.split()
             fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.F)
 
-            with self.u.dat.vec_wo, self.F.dat.vec_ro as u_, F_:
-                self.ksp.solve(F_, u_)
+            with self.w.dat.vec_wo as w_, self.F.dat.vec_ro as F_:
+                self.ksp.solve(F_, w_)
+        
+        #copy the result into Y
+        with self.w.dat.vec_ro as w_:
+            w_.copy(Y)
 
     applyTranspose = apply
     
