@@ -27,7 +27,7 @@ def build_problem(mesh_size, parameters, k, epsilon):
          + fd.inner(u, v)*fd.ds)
     L = - fd.inner(f/fd.Constant(+1j*k), v)*fd.dx
 
-    appctx = {"k": k, "epsilon": epsilon}
+    appctx = {"k": k, "epsilon": epsilon, "f": f}
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
@@ -90,15 +90,16 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         self.F = fd.Function(W)
         self.its = PETSc.Options().getInt(options_prefix + "its")
 
-        #change factor
         w_old = fd.Function(W)
         sigma_old, u_old = w_old.split()
-        self.hss_rhs = (fd.Constant((k-1)/(k+1))*(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
-                                                + fd.inner(fd.grad(u_old), tau)*fd.dx
-                                                - fd.inner(sigma_old, fd.grad(v))*fd.dx
-                                                + fd.inner(fd.Constant((epsilon+1j)*k)*u_old, v)*fd.dx
-                                                + fd.inner(fd.Constant(k)*u_old, v)*fd.ds)
-                        - fd.Constant(2*k/(k+1))*fd.inner(f/fd.Constant(-epsilon+1j*k), v)*fd.dx)
+
+        f = context.appctx.get("f")
+        self.hss_rhs = (fd.Constant((k-1)*(epsilon-1j*k)/(2*k))*(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
+                                                                + fd.inner(fd.grad(u_old), tau)*fd.dx
+                                                                - fd.inner(sigma_old, fd.grad(v))*fd.dx
+                                                                + fd.inner(fd.Constant((epsilon+1j)*k)*u_old, v)*fd.dx
+                                                                + fd.inner(fd.Constant(k)*u_old, v)*fd.ds)
+                        + fd.inner(f, v)*fd.dx)
 
     def update(self, pc):
         pass
@@ -143,6 +144,7 @@ parameters = {
     "helmhss_fieldsplit_1_ksp_type": "preonly",
     "helmhss_fieldsplit_1_pc_type": "lu",
     "helmhss_mat_type": "nest",
+    "helmhss_its": 10,
     "mat_type": "matfree",
     "ksp_monitor": None,
     "ksp_converged_reason": None,
