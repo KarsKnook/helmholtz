@@ -128,6 +128,15 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         self.ksp.view(viewer)
 
 
+class Schur(fd.AuxiliaryOperatorPC):
+    def form(self, pc, u, v):
+        a = (fd.inner(fd.grad(u), fd.grad(v))*fd.dx
+            + fd.inner(fd.Constant((-epsilon+1j)**2*k**2)*u, v)*fd.dx
+            - fd.inner(fd.Constant((-epsilon+1j)*k**2)*u, v)*fd.ds)
+        bcs = None
+        return (a, bcs)
+
+
 #testing the preconditioner
 n = 10
 k = 1
@@ -145,7 +154,10 @@ parameters = {
     "helmhss_fieldsplit_0_ksp_type": "preonly",
     "helmhss_fieldsplit_0_pc_type": "ilu",
     "helmhss_fieldsplit_1_ksp_type": "preonly",
-    "helmhss_fieldsplit_1_pc_type": "lu",
+    #"helmhss_fieldsplit_1_pc_type": "lu",
+    "helmhss_fieldsplit_1_pc_type": "python",
+    "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
+    "helmhss_fieldsplit_1_aux_pc_type": "lu",
     "helmhss_mat_type": "nest",
     "helmhss_its": 10,
     "mat_type": "matfree",
