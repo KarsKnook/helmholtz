@@ -16,10 +16,12 @@ def build_problem(mesh_size, parameters, k, epsilon):
     sigma, u = fd.TrialFunctions(W)
     tau, v = fd.TestFunctions(W)
 
+    # RHS for u = sin^2(pi*x)sin^2(pi*y)
     x, y = fd.SpatialCoordinate(mesh)
     f = (-k**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
          + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
+    # linear variational form of original problem
     a = (fd.inner(fd.Constant(-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
@@ -27,6 +29,7 @@ def build_problem(mesh_size, parameters, k, epsilon):
          + fd.inner(u, v)*fd.ds)
     L = - fd.inner(f/fd.Constant(+1j*k), v)*fd.dx
 
+    # setting up a linear variational solver and passing in k, epsilon and f too
     appctx = {"k": k, "epsilon": epsilon, "f": f}
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
@@ -36,18 +39,23 @@ def build_problem(mesh_size, parameters, k, epsilon):
 
 
 class pHSS_PC(fd.preconditioners.base.PCBase):
+    """
+    pHSS preconditioner for indefinite helmholtz equation
+    Copied from firedrake/firedrake/preconditioners/massinv.py
+    """
     needs_python_pmat = True
 
     def initialize(self, pc):
         prefix = pc.getOptionsPrefix()
         options_prefix = prefix + "helmhss_"
-        # we assume P has things stuffed inside of it
         _, P = pc.getOperators()
         context = P.getPythonContext()
         self.context = context
 
+        # obtaining k, epsilon and f
         k = context.appctx.get("k", 1.0)
         epsilon = context.appctx.get("epsilon", 1.0)
+        f = context.appctx.get("f")
 
         test, trial = context.a.arguments()
 
@@ -59,12 +67,14 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         sigma_new, u_new = fd.TrialFunctions(W)
         tau, v = fd.TestFunctions(W)
 
+        # LHS of coupled pHSS iteration
         a = fd.Constant((epsilon-1j*k)*(k+1)/(2*k))*(fd.inner(fd.Constant((epsilon-1j)*k)*sigma_new, tau)*fd.dx
                                                      - fd.inner(fd.grad(u_new), tau)*fd.dx
                                                      + fd.inner(sigma_new, fd.grad(v))*fd.dx
                                                      + fd.inner(fd.Constant((epsilon-1j)*k)*u_new, v)*fd.dx
                                                      + fd.inner(fd.Constant(k)*u_new,v)*fd.ds)
 
+        # initializing pHSS KSP
         opts = PETSc.Options()
         mat_type = opts.getString(options_prefix + "mat_type",
                                   fd.parameters["default_matrix_type"])
@@ -86,13 +96,13 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         ksp.setUp()
         self.ksp = ksp
 
+        # initializing hss_rhs for multiple iterations
         self.w = fd.Function(W)
         self.F = fd.Function(W)
         self.its = PETSc.Options().getInt(options_prefix + "its")
 
         w_old = fd.Function(W)
         sigma_old, u_old = w_old.split()
-        f = context.appctx.get("f")
         self.hss_rhs = (fd.Constant((k-1)*(epsilon-1j*k)/(2*k))*(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
                                                                 + fd.inner(fd.grad(u_old), tau)*fd.dx
                                                                 - fd.inner(sigma_old, fd.grad(v))*fd.dx
@@ -104,6 +114,9 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         pass
 
     def apply(self, pc, X, Y):
+        """
+        Copied from asQ/asQ/diag_preconditioner.py
+        """
         #first solve
         with self.w.dat.vec_wo as w_:
             self.ksp.solve(X, w_)
@@ -129,6 +142,10 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
 
 
 class Schur(fd.AuxiliaryOperatorPC):
+    """
+    Defining the exact Schur complement for the pHSS iteration
+    Copied from firedrake/demos/saddle_point_pc
+    """
     def form(self, pc, u, v):
         a = (fd.inner(fd.grad(u), fd.grad(v))*fd.dx
             + fd.inner(fd.Constant((-epsilon+1j)**2*k**2)*u, v)*fd.dx
