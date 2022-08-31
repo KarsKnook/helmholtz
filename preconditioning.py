@@ -1,5 +1,6 @@
 import firedrake as fd
 from firedrake.petsc import PETSc
+from firedrake import dmhooks
 import matplotlib.pyplot as plt
 
 
@@ -89,12 +90,16 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         tnullsp = P.getTransposeNullSpace()
         if tnullsp.handle != 0:
             Pmat.setTransposeNullSpace(tnullsp)
-
+        dm = W.dm
+        
         ksp = PETSc.KSP().create(comm=pc.comm)
+        ksp.setDM(dm)
+        ksp.setDMActive(False)
         ksp.incrementTabLevel(1, parent=pc)
         ksp.setOperators(Pmat)
         ksp.setOptionsPrefix(options_prefix)
-        ksp.setFromOptions()
+        with dmhooks.add_hooks(dm, self, appctx=context.appctx, save=False):
+            ksp.setFromOptions()
         ksp.setUp()
         self.ksp = ksp
 
@@ -155,7 +160,7 @@ class Schur(fd.AuxiliaryOperatorPC):
     Defining the exact Schur complement for the pHSS iteration
     Copied from firedrake/demos/saddle_point_pc
     """
-    def form(self, pc, u, v):
+    def form(self, pc, v, u):
         a = (fd.inner(fd.grad(u), fd.grad(v))*fd.dx
             + fd.inner(fd.Constant((-epsilon+1j)**2*k**2)*u, v)*fd.dx
             - fd.inner(fd.Constant((-epsilon+1j)*k**2)*u, v)*fd.ds)
@@ -180,7 +185,6 @@ parameters = {
     "helmhss_fieldsplit_0_ksp_type": "preonly",
     "helmhss_fieldsplit_0_pc_type": "ilu",
     "helmhss_fieldsplit_1_ksp_type": "preonly",
-    #"helmhss_fieldsplit_1_pc_type": "lu",
     "helmhss_fieldsplit_1_pc_type": "python",
     "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
     "helmhss_fieldsplit_1_aux_pc_type": "lu",
