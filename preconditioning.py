@@ -147,7 +147,8 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         with self.w.dat.vec_ro as w_:
             w_.copy(Y)
 
-    applyTranspose = apply
+    def applyTranspose(self, pc, x, y):
+        raise NotImplementedError
     
     def view(self, pc, viewer=None):
         super(pHSS_PC, self).view(pc, viewer)
@@ -159,6 +160,7 @@ class Schur(fd.AuxiliaryOperatorPC):
     """
     Defining the exact Schur complement for the pHSS iteration
     Copied from firedrake/demos/saddle_point_pc
+    In future implementations k and epsilon might not be accessible so use self.get_appctx(pc) to get the appctx
     """
     def form(self, pc, v, u):
         a = (fd.inner(fd.grad(u), fd.grad(v))*fd.dx
@@ -170,11 +172,11 @@ class Schur(fd.AuxiliaryOperatorPC):
 
 #testing the preconditioner
 n = 10
-k = 1
-epsilon = 1
+k = 2
+epsilon = 2
 
 parameters = {
-    "ksp_type": "gmres",
+    "ksp_type": "preonly",
     "ksp_gmres_restart": 100,
     "pc_type": "python",
     "pc_python_type": __name__ + ".pHSS_PC",
@@ -189,7 +191,7 @@ parameters = {
     "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
     "helmhss_fieldsplit_1_aux_pc_type": "lu",
     "helmhss_mat_type": "nest",
-    "helmhss_its": 10,
+    "helmhss_its": 2,
     "mat_type": "matfree",
     "ksp_monitor": None,
     "ksp_converged_reason": None,
