@@ -30,7 +30,7 @@ def build_problem(mesh_size, parameters, k, epsilon):
          + fd.inner(u, v)*fd.ds)
     L = - fd.inner(f/fd.Constant(+1j*k), v)*fd.dx
 
-    # setting up a linear variational solver and passing in k, epsilon and f too
+    # setting up a linear variational solver and passing in k, epsilon and f in appctx
     appctx = {"k": k, "epsilon": epsilon, "f": f}
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
@@ -47,6 +47,7 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
     needs_python_pmat = True
 
     def initialize(self, pc):
+        # obtaining solver options and context
         prefix = pc.getOptionsPrefix()
         options_prefix = prefix + "helmhss_"
         _, P = pc.getOperators()
@@ -57,8 +58,8 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         k = context.appctx.get("k", 1.0)
         epsilon = context.appctx.get("epsilon", 1.0)
         f = context.appctx.get("f")
-        self.k, self.epsilon, self.f = k, epsilon, f
 
+        # initiliazing test and trial functions
         test, trial = context.a.arguments()
 
         if test.function_space() != trial.function_space():
@@ -68,7 +69,6 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
 
         sigma_new, u_new = fd.TrialFunctions(W)
         tau, v = fd.TestFunctions(W)
-        self.tau, self.v = tau, v
 
         # LHS of coupled pHSS iteration
         a = fd.Constant((epsilon-1j*k)*(k+1)/(2*k))*(fd.inner(fd.Constant((epsilon-1j)*k)*sigma_new, tau)*fd.dx
@@ -99,23 +99,23 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         ksp.setOperators(Pmat)
         ksp.setOptionsPrefix(options_prefix)
         with dmhooks.add_hooks(dm, self, appctx=context.appctx, save=False):
-            ksp.setFromOptions()
+            ksp.setFromOptions()  # ensures appctx is passed on to the next ksp + pc
         ksp.setUp()
         self.ksp = ksp
 
-        # initializing hss_rhs for multiple iterations
-        self.w = fd.Function(W)
-        self.F = fd.Function(W)
+        # initializing self.hss_rhs multiple iterations
+        self.w = fd.Function(W)  # to store solution every pHSS iteration
+        self.q = fd.Function(W)  # to assemble self.hss_rhs into
         self.its = PETSc.Options().getInt(options_prefix + "its")
 
-        """w_old = fd.Function(W)
+        w_old = fd.Function(W)
         sigma_old, u_old = w_old.split()
-        self.hss_rhs = (fd.Constant((k-1)*(epsilon-1j*k)/(2*k))*(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
-                                                                + fd.inner(fd.grad(u_old), tau)*fd.dx
-                                                                - fd.inner(sigma_old, fd.grad(v))*fd.dx
-                                                                + fd.inner(fd.Constant((epsilon+1j)*k)*u_old, v)*fd.dx
-                                                                + fd.inner(fd.Constant(k)*u_old, v)*fd.ds)
-                        + fd.inner(f, v)*fd.dx)"""
+        self.hss_rhs = (fd.Constant((k-1)*(epsilon-1j*k)/(2*k))
+                        *(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
+                          + fd.inner(fd.grad(u_old), tau)*fd.dx
+                          - fd.inner(sigma_old, fd.grad(v))*fd.dx
+                          + fd.inner(fd.Constant((epsilon+1j)*k)*u_old, v)*fd.dx
+                          + fd.inner(fd.Constant(k)*u_old, v)*fd.ds))
 
     def update(self, pc):
         pass
@@ -126,22 +126,15 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         """
         #first solve
         with self.w.dat.vec_wo as w_:
-            self.ksp.solve(X, w_)
+            self.ksp.solve(X, w_)  # b = inner(f, v) is the only RHS term because x^0 = 0
 
         #all other solves
         for i in range(self.its - 1):
             sigma_old, u_old = self.w.split()
-            self.hss_rhs = (fd.Constant((self.k-1)*(self.epsilon-1j*self.k)/(2*self.k))*(fd.inner(fd.Constant((self.epsilon+1j)*self.k)*sigma_old, self.tau)*fd.dx
-                                                                + fd.inner(fd.grad(u_old), self.tau)*fd.dx
-                                                                - fd.inner(sigma_old, fd.grad(self.v))*fd.dx
-                                                                + fd.inner(fd.Constant((self.epsilon+1j)*k)*u_old, self.v)*fd.dx
-                                                                + fd.inner(fd.Constant(self.k)*u_old, self.v)*fd.ds)
-                        + fd.inner(self.f, self.v)*fd.dx)
+            fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.q)
 
-            fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.F)
-
-            with self.w.dat.vec_wo as w_, self.F.dat.vec_ro as F_:
-                self.ksp.solve(F_, w_)
+            with self.w.dat.vec_wo as w_, self.q.dat.vec_ro as q_:
+                self.ksp.solve(q_ + X, w_)  # corresponds to self.hss_rhs + inner(f,v)
         
         #copy the result into Y
         with self.w.dat.vec_ro as w_:
@@ -176,7 +169,7 @@ k = 2
 epsilon = 2
 
 parameters = {
-    "ksp_type": "preonly",
+    "ksp_type": "gmres",
     "ksp_gmres_restart": 100,
     "pc_type": "python",
     "pc_python_type": __name__ + ".pHSS_PC",
