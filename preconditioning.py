@@ -110,7 +110,7 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
 
         w_old = fd.Function(W)
         sigma_old, u_old = w_old.split()
-        self.hss_rhs = (fd.Constant((k-1)*(epsilon-1j*k)/(2*k))
+        self.hss_rhs = (fd.Constant((k-1)/(-2*k))
                         *(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
                           + fd.inner(fd.grad(u_old), tau)*fd.dx
                           - fd.inner(sigma_old, fd.grad(v))*fd.dx
@@ -171,6 +171,7 @@ epsilon = 2
 parameters = {
     "ksp_type": "gmres",
     "ksp_gmres_restart": 100,
+    #"ksp_atol": 1e-9,
     "pc_type": "python",
     "pc_python_type": __name__ + ".pHSS_PC",
     "helmhss_ksp_type": "preonly",
