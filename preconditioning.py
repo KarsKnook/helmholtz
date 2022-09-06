@@ -110,11 +110,11 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         tau, v = fd.TestFunctions(W)
 
         # LHS of coupled pHSS iteration
-        a = fd.Constant((epsilon-1j*k)*(k+1)/(2*k))*(fd.inner(fd.Constant((epsilon-1j)*k)*sigma_new, tau)*fd.dx
-                                                     - fd.inner(fd.grad(u_new), tau)*fd.dx
-                                                     + fd.inner(sigma_new, fd.grad(v))*fd.dx
-                                                     + fd.inner(fd.Constant((epsilon-1j)*k)*u_new, v)*fd.dx
-                                                     + fd.inner(fd.Constant(k)*u_new,v)*fd.ds)
+        a = (fd.inner(fd.Constant((epsilon-1j)*k)*sigma_new, tau)*fd.dx
+             - fd.inner(fd.grad(u_new), tau)*fd.dx
+             + fd.inner(sigma_new, fd.grad(v))*fd.dx
+             + fd.inner(fd.Constant((epsilon-1j)*k)*u_new, v)*fd.dx
+             + fd.inner(fd.Constant(k)*u_new, v)*fd.ds)
 
         # initializing pHSS KSP
         opts = PETSc.Options()
@@ -196,7 +196,8 @@ class Schur(fd.AuxiliaryOperatorPC):
     Copied from firedrake/demos/saddle_point_pc
     """
     def form(self, pc, v, u):
-        epsilon = self.get_appctx(pc).get("epsilon")  # possibly a better way to do this because now we are doing it every iteration
+        k = self.get_appctx(pc).get("k")
+        epsilon = self.get_appctx(pc).get("epsilon")
         a = (fd.inner(fd.grad(u), fd.grad(v))*fd.dx
             + fd.inner(fd.Constant((-epsilon+1j)**2*k**2)*u, v)*fd.dx
             - fd.inner(fd.Constant((-epsilon+1j)*k**2)*u, v)*fd.ds)
@@ -206,14 +207,13 @@ class Schur(fd.AuxiliaryOperatorPC):
 
 #testing the preconditioner
 n = 10
-k = 10
-epsilon = 10
+k = 5
+epsilon_0 = 1
+epsilon = 1
 
 parameters = {
-    "ksp_type": "gmres",
+    "ksp_type": "preonly",
     "ksp_gmres_restart": 100,
-    #"ksp_atol": 1e-9,
-    #"ksp_max_it": 1000,
     "pc_type": "python",
     "pc_python_type": __name__ + ".pHSS_PC",
     "helmhss_ksp_type": "preonly",
@@ -234,7 +234,7 @@ parameters = {
     #"ksp_view": None,
 }
 
-solver, w = build_problem_sin2(n, parameters, k, epsilon)
+solver, w = build_problem_sin2(n, parameters, k, epsilon, epsilon_0)
 solver.solve()
 
 sigma, u = w.split()
