@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 
 def build_problem_sin2(mesh_size, parameters, k, epsilon, epsilon_0=0):
     """
-    Original (non-shifted) problem for u = sin^2(pi*x)sin^2(pi*y) on UnitSquareMesh
+    Build problem for u = sin^2(pi*x)sin^2(pi*y) on UnitSquareMesh
+    epsilon is for shift preconditioning
+    epsilon_0 is a problem parameter
     """
     mesh = fd.UnitSquareMesh(mesh_size, mesh_size)
 
@@ -19,16 +21,16 @@ def build_problem_sin2(mesh_size, parameters, k, epsilon, epsilon_0=0):
 
     # RHS for u = sin^2(pi*x)sin^2(pi*y)
     x, y = fd.SpatialCoordinate(mesh)
-    f = (-k**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
+    f = ((-epsilon_0+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
          + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
     # linear variational form of original problem
-    a = (fd.inner(fd.Constant(-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(epsilon_0-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
-         + fd.inner(fd.Constant(-1j*k)*u, v)*fd.dx
+         + fd.inner(fd.Constant(epsilon_0-1j*k)*u, v)*fd.dx
          + fd.inner(u, v)*fd.ds)
-    L = - fd.inner(f/fd.Constant(+1j*k), v)*fd.dx
+    L = - fd.inner(f/fd.Constant(-epsilon_0+1j*k), v)*fd.dx
 
     # setting up a linear variational solver and passing in k, epsilon and f in appctx
     appctx = {"k": k, "epsilon": epsilon, "f": f}
@@ -42,6 +44,8 @@ def build_problem_sin2(mesh_size, parameters, k, epsilon, epsilon_0=0):
 def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     """
     Wavemaker on UnitDiskMesh
+    epsilon is for shift preconditioning
+    epsilon_0 is a problem parameter
     """
     mesh = fd.UnitDiskMesh(mesh_refinement)
 
@@ -57,12 +61,12 @@ def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_
     f = fd.conditional(fd.le(x**2+y**2, 0.01), 1, 0)
 
     # linear variational form of original problem
-    a = (fd.inner(fd.Constant(-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(epsilon_0-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
-         + fd.inner(fd.Constant(-1j*k)*u, v)*fd.dx
+         + fd.inner(fd.Constant(epsilon_0-1j*k)*u, v)*fd.dx
          + fd.inner(u, v)*fd.ds)
-    L = - fd.inner(f/fd.Constant(+1j*k), v)*fd.dx
+    L = - fd.inner(f/fd.Constant(-epsilon_0+1j*k), v)*fd.dx
 
     # setting up a linear variational solver and passing in k, epsilon and f in appctx
     appctx = {"k": k, "epsilon": epsilon, "f": f}
@@ -190,9 +194,9 @@ class Schur(fd.AuxiliaryOperatorPC):
     """
     Defining the exact Schur complement for the pHSS iteration
     Copied from firedrake/demos/saddle_point_pc
-    In future implementations k and epsilon might not be accessible so use self.get_appctx(pc) to get the appctx
     """
     def form(self, pc, v, u):
+        epsilon = self.get_appctx(pc).get("epsilon")  # possibly a better way to do this because now we are doing it every iteration
         a = (fd.inner(fd.grad(u), fd.grad(v))*fd.dx
             + fd.inner(fd.Constant((-epsilon+1j)**2*k**2)*u, v)*fd.dx
             - fd.inner(fd.Constant((-epsilon+1j)*k**2)*u, v)*fd.ds)
@@ -201,9 +205,9 @@ class Schur(fd.AuxiliaryOperatorPC):
 
 
 #testing the preconditioner
-n = 3
+n = 10
 k = 10
-epsilon = 2
+epsilon = 10
 
 parameters = {
     "ksp_type": "gmres",
@@ -223,14 +227,14 @@ parameters = {
     "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
     "helmhss_fieldsplit_1_aux_pc_type": "lu",
     "helmhss_mat_type": "nest",
-    "helmhss_its": 10*k,
+    "helmhss_its": 10,
     "mat_type": "matfree",
     "ksp_monitor": None,
     "ksp_converged_reason": None,
     #"ksp_view": None,
 }
 
-solver, w = build_problem_point_source(n, parameters, k, epsilon)
+solver, w = build_problem_sin2(n, parameters, k, epsilon)
 solver.solve()
 
 sigma, u = w.split()
