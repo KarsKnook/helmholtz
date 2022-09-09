@@ -207,8 +207,8 @@ class Schur(fd.AuxiliaryOperatorPC):
 
 
 #testing the preconditioner
-n = 10
-k = 10
+"""n = 4
+k = 20
 epsilon_0 = 0
 epsilon = 1
 
@@ -235,23 +235,21 @@ parameters = {
     #"ksp_view": None,
 }
 
-solver, w = build_problem_sin2(n, parameters, k, epsilon, epsilon_0)
+solver, w = build_problem_point_source(n, parameters, k, epsilon, epsilon_0)
 solver.solve()
 
 sigma, u = w.split()
 collection = fd.tripcolor(u, cmap='coolwarm')
 plt.colorbar(collection)
-plt.show()
+plt.show()"""
 
-"""for k in range(1, 20):
-    n = 4
-    epsilon = 0.1
+for k in range(1, 20):
+    n = 5
+    epsilon = 1
 
     parameters = {
         "ksp_type": "gmres",
         "ksp_gmres_restart": 100,
-        #"ksp_atol": 1e-9,
-        #"ksp_max_it": 1000,
         "pc_type": "python",
         "pc_python_type": __name__ + ".pHSS_PC",
         "helmhss_ksp_type": "preonly",
@@ -265,13 +263,12 @@ plt.show()
         "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
         "helmhss_fieldsplit_1_aux_pc_type": "lu",
         "helmhss_mat_type": "nest",
-        "helmhss_its": 1,
+        "helmhss_its": k,
         "mat_type": "matfree",
         #"ksp_monitor": None,
-        #"ksp_converged_reason": None,
         #"ksp_view": None,
     }
 
     solver, w = build_problem_point_source(n, parameters, k, epsilon)
     solver.solve()
-    print(k, solver.snes.ksp.getIterationNumber())"""
+    print(k, solver.snes.ksp.getIterationNumber())
