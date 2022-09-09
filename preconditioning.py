@@ -96,6 +96,7 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         k = context.appctx.get("k")
         self.k = k
         epsilon = context.appctx.get("epsilon")
+        self.epsilon = epsilon
         f = context.appctx.get("f")
 
         # initiliazing test and trial functions
@@ -198,21 +199,21 @@ class Schur(fd.AuxiliaryOperatorPC):
     def form(self, pc, v, u):
         k = self.get_appctx(pc).get("k")
         epsilon = self.get_appctx(pc).get("epsilon")
-        a = (fd.inner(fd.grad(u), fd.grad(v))*fd.dx
-            + fd.inner(fd.Constant((-epsilon+1j)**2*k**2)*u, v)*fd.dx
-            - fd.inner(fd.Constant((-epsilon+1j)*k**2)*u, v)*fd.ds)
+        a = (fd.inner(fd.Constant(1/((epsilon-1j)*k))*fd.grad(u), fd.grad(v))*fd.dx
+            + fd.inner(fd.Constant((epsilon-1j)*k)*u, v)*fd.dx
+            + fd.inner(fd.Constant(k)*u, v)*fd.ds)
         bcs = None
         return (a, bcs)
 
 
 #testing the preconditioner
 n = 10
-k = 5
-epsilon_0 = 1
+k = 10
+epsilon_0 = 0
 epsilon = 1
 
 parameters = {
-    "ksp_type": "preonly",
+    "ksp_type": "gmres",
     "ksp_gmres_restart": 100,
     "pc_type": "python",
     "pc_python_type": __name__ + ".pHSS_PC",
