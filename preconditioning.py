@@ -4,13 +4,15 @@ from firedrake import dmhooks
 import matplotlib.pyplot as plt
 
 
-def build_problem_sin2(mesh_size, parameters, k, epsilon, epsilon_0=0):
+def build_problem_sin2(base_refinement, mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     """
     Build problem for u = sin^2(pi*x)sin^2(pi*y) on UnitSquareMesh
     epsilon is for shift preconditioning
     epsilon_0 is a problem parameter
     """
-    mesh = fd.UnitSquareMesh(mesh_size, mesh_size)
+    bmesh = fd.UnitSquareMesh(base_refinement, base_refinement)
+    hierarchy = fd.MeshHierarchy(bmesh, mesh_refinement - base_refinement)
+    mesh = hierarchy[-1]
 
     V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
     Q = fd.FunctionSpace(mesh, "CG", degree=2)
@@ -41,13 +43,15 @@ def build_problem_sin2(mesh_size, parameters, k, epsilon, epsilon_0=0):
     return solver, w
 
 
-def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
+def build_problem_point_source(base_refinement, mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     """
     Wavemaker on UnitDiskMesh
     epsilon is for shift preconditioning
     epsilon_0 is a problem parameter
     """
-    mesh = fd.UnitDiskMesh(mesh_refinement)
+    bmesh = fd.UnitDiskMesh(base_refinement)
+    hierarchy = fd.MeshHierarchy(bmesh, mesh_refinement - base_refinement)
+    mesh = hierarchy[-1]
 
     V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
     Q = fd.FunctionSpace(mesh, "CG", degree=2)
@@ -244,8 +248,25 @@ plt.colorbar(collection)
 plt.show()"""
 
 for k in range(1, 20):
-    n = 5
+    base_refinement = 2
+    mesh_refinement = 5
     epsilon = 1
+
+    mg_parameters = {
+        "ksp_type": "preonly",
+        "pc_type": "mg",
+        "pc_mg_type": "full",
+        "mg_levels_ksp_type": "chebyshev",
+        "mg_levels_ksp_max_it": 2,
+        "mg_levels_pc_type": "jacobi"
+    }
+
+    amg_parameters = {
+        "ksp_type": "richardson",
+        "ksp_max_it": 5,
+        "pc_type": "bjacobi",
+        "pc_sub_type": "ilu"
+    }
 
     parameters = {
         "ksp_type": "gmres",
@@ -257,11 +278,16 @@ for k in range(1, 20):
         "helmhss_pc_fieldsplit_type": "schur",
         "helmhss_pc_fieldsplit_schur_fact_type": "full",
         "helmhss_fieldsplit_0_ksp_type": "preonly",
-        "helmhss_fieldsplit_0_pc_type": "ilu",
+        "helmhss_fieldsplit_0_pc_type": "bjacobi",
+        "helmhss_fieldsplit_0_sub_pc_type": "ilu",
         "helmhss_fieldsplit_1_ksp_type": "preonly",
         "helmhss_fieldsplit_1_pc_type": "python",
         "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
-        "helmhss_fieldsplit_1_aux_pc_type": "lu",
+        #"helmhss_fieldsplit_1_aux": mg_parameters,
+        "helmhss_fieldsplit_1_aux_pc_type": "gamg",
+        "helmhss_fieldsplit_1_aux_pc_mg_type": "multiplicative",
+        "helmhss_fieldsplit_1_aux_pc_mg_cycle_type": "w",
+        "helmhss_fieldsplit_1_aux_mg_levels": amg_parameters,
         "helmhss_mat_type": "nest",
         "helmhss_its": k,
         "mat_type": "matfree",
@@ -269,6 +295,6 @@ for k in range(1, 20):
         #"ksp_view": None,
     }
 
-    solver, w = build_problem_point_source(n, parameters, k, epsilon)
+    solver, w = build_problem_point_source(base_refinement, mesh_refinement, parameters, k, epsilon)
     solver.solve()
     print(k, solver.snes.ksp.getIterationNumber())
