@@ -1,18 +1,17 @@
 import firedrake as fd
 from firedrake.petsc import PETSc
 from firedrake import dmhooks
-import matplotlib.pyplot as plt
+import warnings
+warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm 
 
 
-def build_problem_sin2(base_refinement, mesh_refinement, parameters, k, epsilon, epsilon_0=0):
+def build_problem_sin2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     """
     Build problem for u = sin^2(pi*x)sin^2(pi*y) on UnitSquareMesh
     epsilon is for shift preconditioning
     epsilon_0 is a problem parameter
     """
-    bmesh = fd.UnitSquareMesh(base_refinement, base_refinement)
-    hierarchy = fd.MeshHierarchy(bmesh, mesh_refinement - base_refinement)
-    mesh = hierarchy[-1]
+    mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
 
     V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
     Q = fd.FunctionSpace(mesh, "CG", degree=2)
@@ -43,15 +42,13 @@ def build_problem_sin2(base_refinement, mesh_refinement, parameters, k, epsilon,
     return solver, w
 
 
-def build_problem_point_source(base_refinement, mesh_refinement, parameters, k, epsilon, epsilon_0=0):
+def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     """
     Wavemaker on UnitDiskMesh
     epsilon is for shift preconditioning
     epsilon_0 is a problem parameter
     """
-    bmesh = fd.UnitDiskMesh(base_refinement)
-    hierarchy = fd.MeshHierarchy(bmesh, mesh_refinement - base_refinement)
-    mesh = hierarchy[-1]
+    mesh = fd.UnitDiskMesh(mesh_refinement)
 
     V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
     Q = fd.FunctionSpace(mesh, "CG", degree=2)
@@ -208,93 +205,3 @@ class Schur(fd.AuxiliaryOperatorPC):
             + fd.inner(fd.Constant(k)*u, v)*fd.ds)
         bcs = None
         return (a, bcs)
-
-
-#testing the preconditioner
-"""n = 4
-k = 20
-epsilon_0 = 0
-epsilon = 1
-
-parameters = {
-    "ksp_type": "gmres",
-    "ksp_gmres_restart": 100,
-    "pc_type": "python",
-    "pc_python_type": __name__ + ".pHSS_PC",
-    "helmhss_ksp_type": "preonly",
-    "helmhss_pc_type": "fieldsplit",
-    "helmhss_pc_fieldsplit_type": "schur",
-    "helmhss_pc_fieldsplit_schur_fact_type": "full",
-    "helmhss_fieldsplit_0_ksp_type": "preonly",
-    "helmhss_fieldsplit_0_pc_type": "ilu",
-    "helmhss_fieldsplit_1_ksp_type": "preonly",
-    "helmhss_fieldsplit_1_pc_type": "python",
-    "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
-    "helmhss_fieldsplit_1_aux_pc_type": "lu",
-    "helmhss_mat_type": "nest",
-    "helmhss_its": 10,
-    "mat_type": "matfree",
-    "ksp_monitor": None,
-    "ksp_converged_reason": None,
-    #"ksp_view": None,
-}
-
-solver, w = build_problem_point_source(n, parameters, k, epsilon, epsilon_0)
-solver.solve()
-
-sigma, u = w.split()
-collection = fd.tripcolor(u, cmap='coolwarm')
-plt.colorbar(collection)
-plt.show()"""
-
-for k in range(1, 20):
-    base_refinement = 2
-    mesh_refinement = 5
-    epsilon = 1
-
-    mg_parameters = {
-        "ksp_type": "preonly",
-        "pc_type": "mg",
-        "pc_mg_type": "full",
-        "mg_levels_ksp_type": "chebyshev",
-        "mg_levels_ksp_max_it": 2,
-        "mg_levels_pc_type": "jacobi"
-    }
-
-    amg_parameters = {
-        "ksp_type": "richardson",
-        "ksp_max_it": 5,
-        "pc_type": "bjacobi",
-        "pc_sub_type": "ilu"
-    }
-
-    parameters = {
-        "ksp_type": "gmres",
-        "ksp_gmres_restart": 100,
-        "pc_type": "python",
-        "pc_python_type": __name__ + ".pHSS_PC",
-        "helmhss_ksp_type": "preonly",
-        "helmhss_pc_type": "fieldsplit",
-        "helmhss_pc_fieldsplit_type": "schur",
-        "helmhss_pc_fieldsplit_schur_fact_type": "full",
-        "helmhss_fieldsplit_0_ksp_type": "preonly",
-        "helmhss_fieldsplit_0_pc_type": "bjacobi",
-        "helmhss_fieldsplit_0_sub_pc_type": "ilu",
-        "helmhss_fieldsplit_1_ksp_type": "preonly",
-        "helmhss_fieldsplit_1_pc_type": "python",
-        "helmhss_fieldsplit_1_pc_python_type": __name__ + ".Schur",
-        #"helmhss_fieldsplit_1_aux": mg_parameters,
-        "helmhss_fieldsplit_1_aux_pc_type": "gamg",
-        "helmhss_fieldsplit_1_aux_pc_mg_type": "multiplicative",
-        "helmhss_fieldsplit_1_aux_pc_mg_cycle_type": "w",
-        "helmhss_fieldsplit_1_aux_mg_levels": amg_parameters,
-        "helmhss_mat_type": "nest",
-        "helmhss_its": k,
-        "mat_type": "matfree",
-        #"ksp_monitor": None,
-        #"ksp_view": None,
-    }
-
-    solver, w = build_problem_point_source(base_refinement, mesh_refinement, parameters, k, epsilon)
-    solver.solve()
-    print(k, solver.snes.ksp.getIterationNumber())
