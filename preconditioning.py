@@ -44,7 +44,7 @@ def build_problem_sin2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
 
 def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     """
-    Wavemaker on UnitDiskMesh
+    Point source on UnitDiskMesh
     epsilon is for shift preconditioning
     epsilon_0 is a problem parameter
     """
@@ -60,6 +60,41 @@ def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_
     # RHS for u = sin^2(pi*x)sin^2(pi*y)
     x, y = fd.SpatialCoordinate(mesh)
     f = fd.conditional(fd.le(x**2+y**2, 0.01), 1, 0)
+
+    # linear variational form of original problem
+    a = (fd.inner(fd.Constant(epsilon_0-1j*k)*sigma, tau)*fd.dx
+         - fd.inner(fd.grad(u), tau)*fd.dx
+         + fd.inner(sigma, fd.grad(v))*fd.dx
+         + fd.inner(fd.Constant(epsilon_0-1j*k)*u, v)*fd.dx
+         + fd.inner(u, v)*fd.ds)
+    L = - fd.inner(f/fd.Constant(-epsilon_0+1j*k), v)*fd.dx
+
+    # setting up a linear variational solver and passing in k, epsilon and f in appctx
+    appctx = {"k": k, "epsilon": epsilon, "f": f}
+    w = fd.Function(W)
+    vpb = fd.LinearVariationalProblem(a, L, w)
+    solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
+
+    return solver, w
+
+
+def build_problem_5_2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
+    """
+    Wavemaker on UnitDiskMesh
+    epsilon is for shift preconditioning
+    epsilon_0 is a problem parameter
+    """
+    mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
+
+    V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
+    Q = fd.FunctionSpace(mesh, "CG", degree=2)
+    W = V * Q
+
+    sigma, u = fd.TrialFunctions(W)
+    tau, v = fd.TestFunctions(W)
+
+    # RHS for f = 1
+    f = fd.Constant(1, mesh)
 
     # linear variational form of original problem
     a = (fd.inner(fd.Constant(epsilon_0-1j*k)*sigma, tau)*fd.dx

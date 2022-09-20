@@ -28,6 +28,7 @@ amg_parameters = {
 
 parameters = {
     "ksp_type": "gmres",
+    "ksp_rtol": 1e-6,
     "pc_type": "python",
     "pc_python_type": "preconditioning.pHSS_PC",
     "helmhss_ksp_type": "preonly",

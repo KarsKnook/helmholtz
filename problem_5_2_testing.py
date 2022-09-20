@@ -1,5 +1,5 @@
 from firedrake.petsc import PETSc
-from preconditioning import build_problem_point_source
+from preconditioning import build_problem_5_2
 from argparse import ArgumentParser
 
 
@@ -18,7 +18,7 @@ epsilon = args.epsilon[0]
 
 
 # iteration counts as a function of k
-PETSc.Sys.Print(f"Point source: amount of GMRES iterations for (mesh_refinement: {mesh_refinement}, k: {k}, epsilon: {epsilon}):")
+PETSc.Sys.Print(f"Problem 5.2: amount of GMRES iterations for (mesh_refinement: {mesh_refinement}, k: {k}, epsilon: {epsilon}):")
 
 amg_parameters = {
     "ksp_type": "richardson",
@@ -53,6 +53,6 @@ parameters = {
     #"ksp_view": None,
 }
 
-solver, w = build_problem_point_source(mesh_refinement, parameters, k, epsilon)
+solver, w = build_problem_5_2(mesh_refinement, parameters, k, epsilon)
 solver.solve()
 PETSc.Sys.Print(f"{solver.snes.ksp.getIterationNumber()} iterations")

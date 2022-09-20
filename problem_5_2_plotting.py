@@ -1,5 +1,6 @@
-from firedrake.petsc import PETSc
-from preconditioning import build_problem_point_source
+import firedrake as fd
+import matplotlib.pyplot as plt
+from preconditioning import build_problem_5_2
 from argparse import ArgumentParser
 
 
@@ -17,9 +18,7 @@ k = args.k[0]
 epsilon = args.epsilon[0]
 
 
-# iteration counts as a function of k
-PETSc.Sys.Print(f"Point source: amount of GMRES iterations for (mesh_refinement: {mesh_refinement}, k: {k}, epsilon: {epsilon}):")
-
+#plotting the solution
 amg_parameters = {
     "ksp_type": "richardson",
     "ksp_max_it": 5,
@@ -53,6 +52,12 @@ parameters = {
     #"ksp_view": None,
 }
 
-solver, w = build_problem_point_source(mesh_refinement, parameters, k, epsilon)
+solver, w = build_problem_5_2(mesh_refinement, parameters, k, epsilon)
 solver.solve()
-PETSc.Sys.Print(f"{solver.snes.ksp.getIterationNumber()} iterations")
+
+sigma, u = w.split()
+collection = fd.tripcolor(u, cmap='coolwarm')
+plt.title(f"mesh_refinement: {mesh_refinement}, k: {k}"
+         +f", epsilon: {epsilon}, GMRES iterations: {solver.snes.ksp.getIterationNumber()}")
+plt.colorbar(collection)
+plt.show()
