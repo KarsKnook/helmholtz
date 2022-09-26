@@ -1,58 +1,71 @@
 from firedrake.petsc import PETSc
 from preconditioning import build_problem_5_2
 from argparse import ArgumentParser
+import numpy as np
 
 
 # parsing command-line arguments
 parser = ArgumentParser(description="""Find the amount of GMRES iterations""")
-parser.add_argument("mesh_refinement", type=int, nargs=1,
-                    help="Refinement level of the mesh")
-parser.add_argument("k", type=float, nargs=1,
-                    help="Frequency k")
-parser.add_argument("epsilon", type=float, nargs=1,
-                    help="Shift preconditioning parameters epsilon")
+parser.add_argument("--mesh_refinement", type=str, choices=("2k", "k^3/2"),
+                    help="Refinement level of the mesh", required=True)
+parser.add_argument("--k", type=str,
+                    help="Frequencies k", required=True)
+parser.add_argument("--epsilon", type=str,
+                    help="Shift preconditioning parameters epsilon", required=True)
 args = parser.parse_args()
-mesh_refinement = args.mesh_refinement[0]
-k = args.k[0]
-epsilon = args.epsilon[0]
+k_list = [int(i) for i in args.k.split(',')]
+epsilon_list = [int(i) for i in args.epsilon.split(',')]
+
+if args.mesh_refinement == "2k":
+    mesh_refinement_list = [int(2*k) for k in k_list]
+else: 
+    mesh_refinement_list = [int(k**(3/2))+1 for k in k_list]
 
 
 # iteration counts as a function of k
-PETSc.Sys.Print(f"Problem 5.2: amount of GMRES iterations for (mesh_refinement: {mesh_refinement}, k: {k}, epsilon: {epsilon}):")
+iteration_array = np.zeros((len(k_list), len(epsilon_list)))
 
-amg_parameters = {
-    "ksp_type": "richardson",
-    "ksp_max_it": 5,
-    "pc_type": "bjacobi",
-    "pc_sub_type": "ilu"
-}
+for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
+    for j, epsilon in enumerate(epsilon_list):
+        PETSc.Sys.Print(f"Problem 5.2: amount of GMRES iterations on "
+                    +f"{mesh_refinement}x{mesh_refinement} UnitSquareMesh for k={k} and epsilon={epsilon}")
 
-parameters = {
-    "ksp_type": "gmres",
-    "ksp_rtol": 1e-6,
-    "pc_type": "python",
-    "pc_python_type": "preconditioning.pHSS_PC",
-    "helmhss_ksp_type": "preonly",
-    "helmhss_pc_type": "fieldsplit",
-    "helmhss_pc_fieldsplit_type": "schur",
-    "helmhss_pc_fieldsplit_schur_fact_type": "full",
-    "helmhss_fieldsplit_0_ksp_type": "preonly",
-    "helmhss_fieldsplit_0_pc_type": "bjacobi",
-    "helmhss_fieldsplit_0_sub_pc_type": "ilu",
-    "helmhss_fieldsplit_1_ksp_type": "preonly",
-    "helmhss_fieldsplit_1_pc_type": "python",
-    "helmhss_fieldsplit_1_pc_python_type": "preconditioning.Schur",
-    "helmhss_fieldsplit_1_aux_pc_type": "gamg",
-    "helmhss_fieldsplit_1_aux_pc_mg_type": "multiplicative",
-    "helmhss_fieldsplit_1_aux_pc_mg_cycle_type": "w",
-    "helmhss_fieldsplit_1_aux_mg_levels": amg_parameters,
-    "helmhss_mat_type": "nest",
-    "helmhss_its": int(k),
-    "mat_type": "matfree",
-    #"ksp_monitor": None,
-    #"ksp_view": None,
-}
+        amg_parameters = {
+            "ksp_type": "richardson",
+            "ksp_max_it": 5,
+            "pc_type": "bjacobi",
+            "pc_sub_type": "ilu"
+        }
 
-solver, w = build_problem_5_2(mesh_refinement, parameters, k, epsilon)
-solver.solve()
-PETSc.Sys.Print(f"{solver.snes.ksp.getIterationNumber()} iterations")
+        parameters = {
+            "ksp_type": "gmres",
+            "ksp_rtol": 1e-6,
+            "pc_type": "python",
+            "pc_python_type": "preconditioning.pHSS_PC",
+            "helmhss_ksp_type": "preonly",
+            "helmhss_pc_type": "fieldsplit",
+            "helmhss_pc_fieldsplit_type": "schur",
+            "helmhss_pc_fieldsplit_schur_fact_type": "full",
+            "helmhss_fieldsplit_0_ksp_type": "preonly",
+            "helmhss_fieldsplit_0_pc_type": "bjacobi",
+            "helmhss_fieldsplit_0_sub_pc_type": "ilu",
+            "helmhss_fieldsplit_1_ksp_type": "preonly",
+            "helmhss_fieldsplit_1_pc_type": "python",
+            "helmhss_fieldsplit_1_pc_python_type": "preconditioning.Schur",
+            "helmhss_fieldsplit_1_aux_pc_type": "gamg",
+            "helmhss_fieldsplit_1_aux_pc_mg_type": "multiplicative",
+            "helmhss_fieldsplit_1_aux_pc_mg_cycle_type": "w",
+            "helmhss_fieldsplit_1_aux_mg_levels": amg_parameters,
+            "helmhss_mat_type": "nest",
+            "helmhss_its": int(k),
+            "mat_type": "matfree",
+            #"ksp_monitor": None,
+            #"ksp_view": None,
+        }
+
+        solver, w = build_problem_5_2(mesh_refinement, parameters, k, epsilon)
+        solver.solve()
+        iteration_array[i, j] = solver.snes.ksp.getIterationNumber()
+        PETSc.Sys.Print(f"{solver.snes.ksp.getIterationNumber()} iterations")
+
+np.savetxt("problem_5_2_iterations/problem_5_2_iteration.csv", iteration_array, delimiter=",")
