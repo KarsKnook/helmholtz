@@ -56,8 +56,5 @@ solver, w = build_problem_5_2(mesh_refinement, parameters, k, epsilon)
 solver.solve()
 
 sigma, u = w.split()
-collection = fd.tripcolor(u, cmap='coolwarm')
-plt.title(f"mesh_refinement: {mesh_refinement}, k: {k}"
-         +f", epsilon: {epsilon}, GMRES iterations: {solver.snes.ksp.getIterationNumber()}")
-plt.colorbar(collection)
-plt.show()
+file = fd.File("problem_5_2_plots/problem_5_2_plot.pvd")
+file.write(sigma, u)
