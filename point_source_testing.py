@@ -12,6 +12,8 @@ parser.add_argument("--k", type=str,
                     help="Frequencies k", required=True)
 parser.add_argument("--epsilon", type=str,
                     help="Shift preconditioning parameters epsilon", required=True)
+parser.add_argument("--file_name", type=str,
+                    help="name of csv storing iteration counts", required=True)
 args = parser.parse_args()
 mesh_refinement_list = [int(i) for i in args.mesh_refinement.split(',')]
 k_list = [int(i) for i in args.k.split(',')]
@@ -63,4 +65,4 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
         iteration_array[i, j] = solver.snes.ksp.getIterationNumber()
         PETSc.Sys.Print(f"{solver.snes.ksp.getIterationNumber()} iterations")
 
-np.savetxt("point_source_iterations/point_source_iteration.csv", iteration_array, delimiter=",")
+np.savetxt(f"point_source_iterations/{args.file_name}.csv", iteration_array, delimiter=",")
