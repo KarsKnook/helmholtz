@@ -1,5 +1,5 @@
 import firedrake as fd
-from preconditioning import build_problem_5_2
+from preconditioning import build_problem_box_source
 from argparse import ArgumentParser
 
 
@@ -51,9 +51,9 @@ parameters = {
     #"ksp_view": None,
 }
 
-solver, w = build_problem_5_2(mesh_refinement, parameters, k, delta)
+solver, w = build_problem_box_source(mesh_refinement, parameters, k, delta)
 solver.solve()
 
 sigma, u = w.split()
-file = fd.File("problem_5_2_plots/problem_5_2_plot.pvd")
+file = fd.File("box_source_plots/box_source_plot.pvd")
 file.write(sigma, u)

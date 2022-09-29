@@ -1,5 +1,4 @@
 import firedrake as fd
-import matplotlib.pyplot as plt
 from preconditioning import build_problem_point_source
 from argparse import ArgumentParser
 
