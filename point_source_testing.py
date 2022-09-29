@@ -10,22 +10,22 @@ parser.add_argument("--mesh_refinement", type=str,
                     help="Refinement levels of the mesh", required=True)
 parser.add_argument("--k", type=str,
                     help="Frequencies k", required=True)
-parser.add_argument("--epsilon", type=str,
-                    help="Shift preconditioning parameters epsilon", required=True)
+parser.add_argument("--delta", type=str,
+                    help="Shift preconditioning parameters delta", required=True)
 parser.add_argument("--file_name", type=str,
                     help="name of csv storing iteration counts", required=True)
 args = parser.parse_args()
 mesh_refinement_list = [int(i) for i in args.mesh_refinement.split(',')]
 k_list = [int(i) for i in args.k.split(',')]
-epsilon_list = [int(i) for i in args.epsilon.split(',')]
+delta_list = [int(i) for i in args.delta.split(',')]
 
 
 # iteration counts as a function of k
-iteration_array = np.zeros((len(k_list), len(epsilon_list)))
+iteration_array = np.zeros((len(k_list), len(delta_list)))
 
 for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
-    for j, epsilon in enumerate(epsilon_list):
-        PETSc.Sys.Print(f"Point source: amount of GMRES iterations for (mesh_refinement: {mesh_refinement}, k: {k}, epsilon: {epsilon}):")
+    for j, delta in enumerate(delta_list):
+        PETSc.Sys.Print(f"Point source: amount of GMRES iterations for (mesh_refinement: {mesh_refinement}, k: {k}, delta: {delta}):")
 
         amg_parameters = {
             "ksp_type": "richardson",
@@ -60,7 +60,7 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
             #"ksp_view": None,
         }
 
-        solver, w = build_problem_point_source(mesh_refinement, parameters, k, epsilon)
+        solver, w = build_problem_point_source(mesh_refinement, parameters, k, delta)
         solver.solve()
         iteration_array[i, j] = solver.snes.ksp.getIterationNumber()
         PETSc.Sys.Print(f"{solver.snes.ksp.getIterationNumber()} iterations")

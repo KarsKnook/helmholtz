@@ -5,11 +5,11 @@ import warnings
 warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm 
 
 
-def build_problem_sin2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
+def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0=0):
     """
     Build problem for u = sin^2(pi*x)sin^2(pi*y) on UnitSquareMesh
-    epsilon is for shift preconditioning
-    epsilon_0 is a problem parameter
+    delta is for shift preconditioning
+    delta_0 is a problem parameter
     """
     mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
 
@@ -22,19 +22,19 @@ def build_problem_sin2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
 
     # RHS for u = sin^2(pi*x)sin^2(pi*y)
     x, y = fd.SpatialCoordinate(mesh)
-    f = ((-epsilon_0+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
+    f = ((-delta_0+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
          + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
     # linear variational form of original problem
-    a = (fd.inner(fd.Constant(epsilon_0-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(delta_0-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
-         + fd.inner(fd.Constant(epsilon_0-1j*k)*u, v)*fd.dx
+         + fd.inner(fd.Constant(delta_0-1j*k)*u, v)*fd.dx
          + fd.inner(u, v)*fd.ds)
-    L = - fd.inner(f/fd.Constant(-epsilon_0+1j*k), v)*fd.dx
+    L = - fd.inner(f/fd.Constant(-delta_0+1j*k), v)*fd.dx
 
-    # setting up a linear variational solver and passing in k, epsilon and f in appctx
-    appctx = {"k": k, "epsilon": epsilon, "f": f}
+    # setting up a linear variational solver and passing in k, delta and f in appctx
+    appctx = {"k": k, "delta": delta, "f": f}
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
@@ -42,11 +42,11 @@ def build_problem_sin2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     return solver, w
 
 
-def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
+def build_problem_point_source(mesh_refinement, parameters, k, delta, delta_0=0):
     """
     Point source on UnitDiskMesh
-    epsilon is for shift preconditioning
-    epsilon_0 is a problem parameter
+    delta is for shift preconditioning
+    delta_0 is a problem parameter
     """
     mesh = fd.UnitDiskMesh(mesh_refinement)
 
@@ -62,15 +62,15 @@ def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_
     f = fd.conditional(fd.le(x**2+y**2, 0.01), 1, 0)
 
     # linear variational form of original problem
-    a = (fd.inner(fd.Constant(epsilon_0-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(delta_0-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
-         + fd.inner(fd.Constant(epsilon_0-1j*k)*u, v)*fd.dx
+         + fd.inner(fd.Constant(delta_0-1j*k)*u, v)*fd.dx
          + fd.inner(u, v)*fd.ds)
-    L = - fd.inner(f/fd.Constant(-epsilon_0+1j*k), v)*fd.dx
+    L = - fd.inner(f/fd.Constant(-delta_0+1j*k), v)*fd.dx
 
-    # setting up a linear variational solver and passing in k, epsilon and f in appctx
-    appctx = {"k": k, "epsilon": epsilon, "f": f}
+    # setting up a linear variational solver and passing in k, delta and f in appctx
+    appctx = {"k": k, "delta": delta, "f": f}
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
@@ -78,11 +78,11 @@ def build_problem_point_source(mesh_refinement, parameters, k, epsilon, epsilon_
     return solver, w
 
 
-def build_problem_5_2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
+def build_problem_5_2(mesh_refinement, parameters, k, delta, delta_0=0):
     """
     Wavemaker on UnitDiskMesh
-    epsilon is for shift preconditioning
-    epsilon_0 is a problem parameter
+    delta is for shift preconditioning
+    delta_0 is a problem parameter
     """
     mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
 
@@ -97,15 +97,15 @@ def build_problem_5_2(mesh_refinement, parameters, k, epsilon, epsilon_0=0):
     f = fd.Constant(1, mesh)
 
     # linear variational form of original problem
-    a = (fd.inner(fd.Constant(epsilon_0-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(delta_0-1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
-         + fd.inner(fd.Constant(epsilon_0-1j*k)*u, v)*fd.dx
+         + fd.inner(fd.Constant(delta_0-1j*k)*u, v)*fd.dx
          + fd.inner(u, v)*fd.ds)
-    L = - fd.inner(f/fd.Constant(-epsilon_0+1j*k), v)*fd.dx
+    L = - fd.inner(f/fd.Constant(-delta_0+1j*k), v)*fd.dx
 
-    # setting up a linear variational solver and passing in k, epsilon and f in appctx
-    appctx = {"k": k, "epsilon": epsilon, "f": f}
+    # setting up a linear variational solver and passing in k, delta and f in appctx
+    appctx = {"k": k, "delta": delta, "f": f}
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
@@ -128,11 +128,11 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         context = P.getPythonContext()
         self.context = context
 
-        # obtaining k, epsilon and f
+        # obtaining k, delta and f
         k = context.appctx.get("k")
         self.k = k
-        epsilon = context.appctx.get("epsilon")
-        self.epsilon = epsilon
+        delta = context.appctx.get("delta")
+        self.delta = delta
         f = context.appctx.get("f")
 
         # initiliazing test and trial functions
@@ -147,10 +147,10 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         tau, v = fd.TestFunctions(W)
 
         # LHS of coupled pHSS iteration
-        a = (fd.inner(fd.Constant((epsilon-1j)*k)*sigma_new, tau)*fd.dx
+        a = (fd.inner(fd.Constant((delta-1j)*k)*sigma_new, tau)*fd.dx
              - fd.inner(fd.grad(u_new), tau)*fd.dx
              + fd.inner(sigma_new, fd.grad(v))*fd.dx
-             + fd.inner(fd.Constant((epsilon-1j)*k)*u_new, v)*fd.dx
+             + fd.inner(fd.Constant((delta-1j)*k)*u_new, v)*fd.dx
              + fd.inner(fd.Constant(k)*u_new, v)*fd.ds)
 
         # initializing pHSS KSP
@@ -188,10 +188,10 @@ class pHSS_PC(fd.preconditioners.base.PCBase):
         self.w_old = w_old
         sigma_old, u_old = w_old.split()
         self.hss_rhs = (fd.Constant((k-1)/(k+1))
-                        *(fd.inner(fd.Constant((epsilon+1j)*k)*sigma_old, tau)*fd.dx
+                        *(fd.inner(fd.Constant((delta+1j)*k)*sigma_old, tau)*fd.dx
                           + fd.inner(fd.grad(u_old), tau)*fd.dx
                           - fd.inner(sigma_old, fd.grad(v))*fd.dx
-                          + fd.inner(fd.Constant((epsilon+1j)*k)*u_old, v)*fd.dx
+                          + fd.inner(fd.Constant((delta+1j)*k)*u_old, v)*fd.dx
                           + fd.inner(fd.Constant(k)*u_old, v)*fd.ds))
 
     def update(self, pc):
@@ -234,9 +234,9 @@ class Schur(fd.AuxiliaryOperatorPC):
     """
     def form(self, pc, v, u):
         k = self.get_appctx(pc).get("k")
-        epsilon = self.get_appctx(pc).get("epsilon")
-        a = (fd.inner(fd.Constant(1/((epsilon-1j)*k))*fd.grad(u), fd.grad(v))*fd.dx
-            + fd.inner(fd.Constant((epsilon-1j)*k)*u, v)*fd.dx
+        delta = self.get_appctx(pc).get("delta")
+        a = (fd.inner(fd.Constant(1/((delta-1j)*k))*fd.grad(u), fd.grad(v))*fd.dx
+            + fd.inner(fd.Constant((delta-1j)*k)*u, v)*fd.dx
             + fd.inner(fd.Constant(k)*u, v)*fd.ds)
         bcs = None
         return (a, bcs)

@@ -10,13 +10,13 @@ parser.add_argument("--mesh_refinement", type=str, choices=("2k", "k^3/2"),
                     help="Refinement level of the mesh", required=True)
 parser.add_argument("--k", type=str,
                     help="Frequencies k", required=True)
-parser.add_argument("--epsilon", type=str,
-                    help="Shift preconditioning parameters epsilon", required=True)
+parser.add_argument("--delta", type=str,
+                    help="Shift preconditioning parameters delta", required=True)
 parser.add_argument("--file_name", type=str,
                     help="name of csv storing iteration counts", required=True)
 args = parser.parse_args()
 k_list = [int(i) for i in args.k.split(',')]
-epsilon_list = [int(i) for i in args.epsilon.split(',')]
+delta_list = [int(i) for i in args.delta.split(',')]
 
 if args.mesh_refinement == "2k":
     mesh_refinement_list = [int(2*k) for k in k_list]
@@ -25,12 +25,12 @@ else:
 
 
 # iteration counts as a function of k
-iteration_array = np.zeros((len(k_list), len(epsilon_list)))
+iteration_array = np.zeros((len(k_list), len(delta_list)))
 
 for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
-    for j, epsilon in enumerate(epsilon_list):
+    for j, delta in enumerate(delta_list):
         PETSc.Sys.Print(f"Problem 5.2: amount of GMRES iterations on "
-                    +f"{mesh_refinement}x{mesh_refinement} UnitSquareMesh for k={k} and epsilon={epsilon}")
+                    +f"{mesh_refinement}x{mesh_refinement} UnitSquareMesh for k={k} and delta={delta}")
 
         amg_parameters = {
             "ksp_type": "richardson",
@@ -65,7 +65,7 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
             #"ksp_view": None,
         }
 
-        solver, w = build_problem_5_2(mesh_refinement, parameters, k, epsilon)
+        solver, w = build_problem_5_2(mesh_refinement, parameters, k, delta)
         solver.solve()
         iteration_array[i, j] = solver.snes.ksp.getIterationNumber()
         PETSc.Sys.Print(f"{solver.snes.ksp.getIterationNumber()} iterations")

@@ -10,12 +10,12 @@ parser.add_argument("mesh_refinement", type=int, nargs=1,
                     help="Refinement level of the mesh")
 parser.add_argument("k", type=float, nargs=1,
                     help="Frequency k")
-parser.add_argument("epsilon", type=float, nargs=1,
-                    help="Shift preconditioning parameters epsilon")
+parser.add_argument("delta", type=float, nargs=1,
+                    help="Shift preconditioning parameters delta")
 args = parser.parse_args()
 mesh_refinement = args.mesh_refinement[0]
 k = args.k[0]
-epsilon = args.epsilon[0]
+delta = args.delta[0]
 
 
 #plotting the solution
@@ -52,7 +52,7 @@ parameters = {
     #"ksp_view": None,
 }
 
-solver, w = build_problem_point_source(mesh_refinement, parameters, k, epsilon)
+solver, w = build_problem_point_source(mesh_refinement, parameters, k, delta)
 solver.solve()
 
 sigma, u = w.split()
