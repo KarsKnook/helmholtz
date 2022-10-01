@@ -16,8 +16,8 @@ parser.add_argument("--file_name", type=str,
                     help="name of csv storing iteration counts", required=True)
 args = parser.parse_args()
 mesh_refinement_list = [int(i) for i in args.mesh_refinement.split(',')]
-k_list = [int(i) for i in args.k.split(',')]
-delta_list = [int(i) for i in args.delta.split(',')]
+k_list = [float(i) for i in args.k.split(',')]
+delta_list = [float(i) for i in args.delta.split(',')]
 
 
 # iteration counts as a function of k
@@ -46,7 +46,9 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
             "helmhss_fieldsplit_0_ksp_type": "preonly",
             "helmhss_fieldsplit_0_pc_type": "bjacobi",
             "helmhss_fieldsplit_0_sub_pc_type": "ilu",
-            "helmhss_fieldsplit_1_ksp_type": "preonly",
+            "helmhss_fieldsplit_1_ksp_type": "richardson",
+            "helmhss_fieldsplit_1_ksp_convergence_test": "skip",
+            "helmhss_fieldsplit_1_ksp_max_it": 3,
             "helmhss_fieldsplit_1_pc_type": "python",
             "helmhss_fieldsplit_1_pc_python_type": "preconditioning.Schur",
             "helmhss_fieldsplit_1_aux_pc_type": "gamg",
@@ -54,7 +56,7 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
             "helmhss_fieldsplit_1_aux_pc_mg_cycle_type": "w",
             "helmhss_fieldsplit_1_aux_mg_levels": amg_parameters,
             "helmhss_mat_type": "nest",
-            "helmhss_its": int(k),
+            "helmhss_its": int(np.ceil(k)),
             "mat_type": "matfree",
             #"ksp_monitor": None,
             #"ksp_view": None,
