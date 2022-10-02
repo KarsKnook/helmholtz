@@ -48,7 +48,7 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
             "helmhss_fieldsplit_0_sub_pc_type": "ilu",
             "helmhss_fieldsplit_1_ksp_type": "richardson",
             "helmhss_fieldsplit_1_ksp_convergence_test": "skip",
-            "helmhss_fieldsplit_1_ksp_max_it": 3,
+            "helmhss_fieldsplit_1_ksp_max_it": 15,
             "helmhss_fieldsplit_1_pc_type": "python",
             "helmhss_fieldsplit_1_pc_python_type": "preconditioning.Schur",
             "helmhss_fieldsplit_1_aux_pc_type": "gamg",
