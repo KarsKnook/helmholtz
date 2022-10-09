@@ -63,7 +63,7 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
             "helmhss_mat_type": "nest",
             "helmhss_its": int(np.ceil(k)),
             "mat_type": "matfree",
-            #"ksp_monitor": None,
+            "ksp_monitor": None,
             #"ksp_view": None,
         }
 
