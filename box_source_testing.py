@@ -29,7 +29,7 @@ iteration_array = np.zeros((len(k_list), len(delta_list)))
 
 for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
     for j, delta in enumerate(delta_list):
-        PETSc.Sys.Print(f"Problem 5.2: amount of GMRES iterations on "
+        PETSc.Sys.Print(f"Box source: amount of GMRES iterations on "
                     +f"{mesh_refinement}x{mesh_refinement} UnitSquareMesh for k={k} and delta={delta}")
 
         amg_parameters = {
@@ -52,7 +52,6 @@ for i, (mesh_refinement, k) in enumerate(zip(mesh_refinement_list, k_list)):
             "helmhss_fieldsplit_0_pc_type": "bjacobi",
             "helmhss_fieldsplit_0_sub_pc_type": "ilu",
             "helmhss_fieldsplit_1_ksp_type": "richardson",
-            "helmhss_fieldsplit_1_ksp_convergence_test": "skip",
             "helmhss_fieldsplit_1_ksp_max_it": 15,
             "helmhss_fieldsplit_1_pc_type": "python",
             "helmhss_fieldsplit_1_pc_python_type": "preconditioning.Schur",
