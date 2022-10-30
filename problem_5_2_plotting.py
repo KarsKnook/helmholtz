@@ -5,16 +5,21 @@ from argparse import ArgumentParser
 
 # parsing command-line arguments
 parser = ArgumentParser(description="""Find the amount of GMRES iterations""")
-parser.add_argument("mesh_refinement", type=int, nargs=1,
-                    help="Refinement level of the mesh")
-parser.add_argument("k", type=float, nargs=1,
+parser.add_argument("--mesh_refinement", type=str, choices=("2k", "k^3/2"),
+                    help="Refinement level of the mesh", required=True)
+parser.add_argument("--k", type=float, nargs=1,
                     help="Frequency k")
-parser.add_argument("delta", type=float, nargs=1,
+parser.add_argument("--delta", type=float, nargs=1,
                     help="Shift preconditioning parameters delta")
 args = parser.parse_args()
-mesh_refinement = args.mesh_refinement[0]
+
 k = args.k[0]
 delta = args.delta[0]
+
+if args.mesh_refinement == "2k":
+    mesh_refinement = int(2*k)
+else:
+    mesh_refinement = int(k**(3/2)) + 1
 
 
 #plotting the solution
@@ -48,7 +53,7 @@ parameters = {
     "helmhss_mat_type": "nest",
     "helmhss_its": int(k),
     "mat_type": "matfree",
-    #"ksp_monitor": None,
+    "ksp_monitor": None,
     #"ksp_view": None,
 }
 
