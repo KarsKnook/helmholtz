@@ -1,8 +1,6 @@
 import firedrake as fd
 from firedrake.petsc import PETSc
 from firedrake import dmhooks
-import warnings
-warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm 
 
 
 class HSS_PC(fd.preconditioners.base.PCBase):

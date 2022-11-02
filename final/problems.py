@@ -91,7 +91,7 @@ def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0=0):
     return build_problem(mesh, f, parameters, k, delta, delta_0)
 
 
-def build_problem_5_2(mesh_refinement, parameters, k, delta, delta_0=0):
+def build_problem_constant(mesh_refinement, parameters, k, delta, delta_0=0):
     """
     Assembles linear variational solver for f = 1 on UnitSquareMesh
 
