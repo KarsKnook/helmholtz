@@ -7,10 +7,10 @@ def mixed_helmholtz_LHS(sigma, u, tau, v, k, delta_0):
     """
     Assembles the LHS of the mixed formulation of the Helmholtz equation
 
-    :param sigma: DG1 trial function
-    :param u: CG2 trial function
-    :param tau: DG1 test function
-    :param v: CG2 test function
+    :param sigma: DG(k-1) trial function
+    :param u: CGk trial function
+    :param tau: DG(k-1) test function
+    :param v: CGk test function
     :param k: frequency parameter
     :param delta_0: shift problem parameter
     :return a: UFL expression for the LHS
@@ -28,7 +28,7 @@ def mixed_helmholtz_RHS(f, v, k, delta_0):
     Assembles the RHS of the mixed formulation of the Helmholtz equation
 
     :param f: UFL expression for RHS function f
-    :param v: CG2 test function
+    :param v: CGk test function
     :param k: frequency parameter
     :param delta_0: shift problem parameter
     :return L: UFL expression for the RHS
@@ -36,7 +36,7 @@ def mixed_helmholtz_RHS(f, v, k, delta_0):
     return -fd.inner(f/fd.Constant(-delta_0+1j*k), v)*fd.dx
 
 
-def build_problem(mesh, f, parameters, k, delta, delta_0):
+def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     """
     Given mesh and RHS function f, assembles the linear variational solver
 
@@ -46,12 +46,13 @@ def build_problem(mesh, f, parameters, k, delta, delta_0):
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
     :param delta_0: shift problem parameter
+    :param degree: degree of CGk
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
     # build mixed function space and define test and trial functions
-    V = fd.VectorFunctionSpace(mesh, "DG", degree=1, dim=2)
-    Q = fd.FunctionSpace(mesh, "CG", degree=2)
+    V = fd.VectorFunctionSpace(mesh, "DG", degree=degree-1, dim=2)
+    Q = fd.FunctionSpace(mesh, "CG", degree=degree)
     W = V * Q
     sigma, u = fd.TrialFunctions(W)
     tau, v = fd.TestFunctions(W)
@@ -68,7 +69,7 @@ def build_problem(mesh, f, parameters, k, delta, delta_0):
     return solver, w
 
 
-def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0=0):
+def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree):
     """
     Assembles linear variational solver for source function in 0.2x0.2 box on UnitSquareMesh
 
@@ -77,6 +78,7 @@ def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0=0):
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
     :param delta_0: shift problem parameter
+    :param degree: degree of CGk
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
@@ -88,10 +90,10 @@ def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0=0):
          *fd.conditional(fd.ge(y, 0.4), 1, 0)
          *fd.conditional(fd.le(y, 0.6), 1, 0))
 
-    return build_problem(mesh, f, parameters, k, delta, delta_0)
+    return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_constant(mesh_refinement, parameters, k, delta, delta_0=0):
+def build_problem_constant(mesh_refinement, parameters, k, delta, delta_0, degree):
     """
     Assembles linear variational solver for f = 1 on UnitSquareMesh
 
@@ -100,6 +102,7 @@ def build_problem_constant(mesh_refinement, parameters, k, delta, delta_0=0):
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
     :param delta_0: shift problem parameter
+    :param degree: degree of CGk
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
@@ -107,10 +110,10 @@ def build_problem_constant(mesh_refinement, parameters, k, delta, delta_0=0):
 
     f = fd.Constant(1, mesh)
 
-    return build_problem(mesh, f, parameters, k, delta, delta_0)
+    return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0=0):
+def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree):
     """
     Assembles linear variational solver for u = sin^2(pi*x)sin^2(pi*y) on UnitSquareMesh
 
@@ -119,6 +122,7 @@ def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0=0):
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
     :param delta_0: shift problem parameter
+    :param degree: degree of CGk
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
@@ -126,6 +130,7 @@ def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0=0):
 
     x, y = fd.SpatialCoordinate(mesh)
     f = ((-delta_0+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
-         + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
+         + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) 
+         - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
-    return build_problem(mesh, f, parameters, k, delta, delta_0)
+    return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
