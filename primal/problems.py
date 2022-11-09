@@ -3,7 +3,7 @@ import warnings
 warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm 
 
 
-def primal_helmholtz_LHS(u, v, k, delta_0):
+def helmholtz_LHS(u, v, k, delta_0):
     """
     Assembles the LHS of the primal formulation of the Helmholtz equation
 
@@ -19,7 +19,7 @@ def primal_helmholtz_LHS(u, v, k, delta_0):
     return a
 
 
-def primal_helmholtz_RHS(f, v, k, delta_0):
+def helmholtz_RHS(f, v, k, delta_0):
     """
     Assembles the RHS of the primal formulation of the Helmholtz equation
 
@@ -34,7 +34,7 @@ def primal_helmholtz_RHS(f, v, k, delta_0):
 
 def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     """
-    Given mesh and RHS function f, assembles the linear variational solver
+    Given mesh and RHS function f, assembles the linear variational solver for the primal formulation
 
     :param mesh: Mesh object
     :param f: UFL expression for RHS function f
@@ -47,17 +47,17 @@ def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     :return w: solution function
     """
     # build function space and define test and trial functions
-    Q = fd.FunctionSpace(mesh, "CG", degree=degree)
-    u = fd.TrialFunction(Q)
-    v = fd.TestFunction(Q)
+    W = fd.FunctionSpace(mesh, "CG", degree=degree)
+    u = fd.TrialFunction(W)
+    v = fd.TestFunction(W)
 
     # build LHS and RHS of the primal helmholtz problem
-    a = primal_helmholtz_LHS(u, v, k, delta_0)
-    L = primal_helmholtz_RHS(f, v, k, delta_0)
+    a = helmholtz_LHS(u, v, k, delta_0)
+    L = helmholtz_RHS(f, v, k, delta_0)
 
     # build problem and solver for primal helmholtz problem
     appctx = {"k": k, "delta": delta, "f": f}
-    w = fd.Function(Q)
+    w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
     return solver, w

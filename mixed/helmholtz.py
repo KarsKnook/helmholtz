@@ -5,7 +5,7 @@ from firedrake import dmhooks
 
 class HSS_PC(fd.preconditioners.base.PCBase):
     """
-    HSS preconditioner for indefinite helmholtz equation
+    HSS preconditioner for mixed formulation of the indefinite Helmholtz equation
     Based on firedrake/firedrake/preconditioners/massinv.py
     """
     needs_python_pmat = True
@@ -113,13 +113,13 @@ class HSS_PC(fd.preconditioners.base.PCBase):
     
     def view(self, pc, viewer=None):
         super(HSS_PC, self).view(pc, viewer)
-        viewer.printfASCII("HSS preconditioner for the indefinite helmholtz equation")
+        viewer.printfASCII("HSS preconditioner for the mixed formulation of the indefinite Helmholtz equation")
         self.ksp.view(viewer)
 
 
 class Schur(fd.AuxiliaryOperatorPC):
     """
-    Schur complement for the HSS preconditioner
+    Schur complement for the mixed HSS preconditioner
     Based on firedrake/demos/saddle_point_pc
     """
     def form(self, pc, v, u):

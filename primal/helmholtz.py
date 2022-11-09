@@ -5,7 +5,7 @@ from firedrake import dmhooks
 
 class HSS_PC(fd.preconditioners.base.PCBase):
     """
-    HSS preconditioner for indefinite helmholtz equation
+    HSS preconditioner for the primal formulation of the indefinite helmholtz equation
     Based on firedrake/firedrake/preconditioners/massinv.py
     """
     needs_python_pmat = True
@@ -31,10 +31,10 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         if test.function_space() != trial.function_space():
             raise ValueError("HSS_PC only makes sense if test and trial space are the same")
 
-        Q = test.function_space()
+        W = test.function_space()
 
-        u_new = fd.TrialFunction(Q)
-        v = fd.TestFunction(Q)
+        u_new = fd.TrialFunction(W)
+        v = fd.TestFunction(W)
 
         # LHS of coupled pHSS iteration
         a = (fd.inner(fd.Constant(-2j*delta*k**2 - k**2 + delta**2)*u_new, v)*fd.dx
@@ -54,7 +54,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         tnullsp = P.getTransposeNullSpace()
         if tnullsp.handle != 0:
             Pmat.setTransposeNullSpace(tnullsp)
-        dm = Q.dm
+        dm = W.dm
         
         ksp = PETSc.KSP().create(comm=pc.comm)
         ksp.setDM(dm)
@@ -68,11 +68,11 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         self.ksp = ksp
 
         # initializing self.hss_rhs for multiple iterations
-        self.w = fd.Function(Q)  # to store solution every HSS iteration
-        self.q = fd.Function(Q)  # to assemble self.hss_rhs into
+        self.w = fd.Function(W)  # to store solution every HSS iteration
+        self.q = fd.Function(W)  # to assemble self.hss_rhs into
         self.its = PETSc.Options().getInt(options_prefix + "its")
 
-        u_old = fd.Function(Q)
+        u_old = fd.Function(W)
         self.u_old = u_old
         self.hss_rhs = (fd.Constant((k-1)/(k+1))*(fd.inner(fd.Constant(-2j*delta*k**2 + (k**2- delta**2))*u_old, v)*fd.dx)
                                                   + fd.inner(fd.Constant(-1j*k**2 - delta)*u_old, v)*fd.ds
@@ -107,5 +107,5 @@ class HSS_PC(fd.preconditioners.base.PCBase):
     
     def view(self, pc, viewer=None):
         super(HSS_PC, self).view(pc, viewer)
-        viewer.printfASCII("HSS preconditioner for the indefinite helmholtz equation")
+        viewer.printfASCII("HSS preconditioner for the primal formulation of the indefinite helmholtz equation")
         self.ksp.view(viewer)

@@ -3,7 +3,7 @@ import warnings
 warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm 
 
 
-def mixed_helmholtz_LHS(sigma, u, tau, v, k, delta_0):
+def helmholtz_LHS(sigma, u, tau, v, k, delta_0):
     """
     Assembles the LHS of the mixed formulation of the Helmholtz equation
 
@@ -23,7 +23,7 @@ def mixed_helmholtz_LHS(sigma, u, tau, v, k, delta_0):
     return a
 
 
-def mixed_helmholtz_RHS(f, v, k, delta_0):
+def helmholtz_RHS(f, v, k, delta_0):
     """
     Assembles the RHS of the mixed formulation of the Helmholtz equation
 
@@ -38,7 +38,7 @@ def mixed_helmholtz_RHS(f, v, k, delta_0):
 
 def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     """
-    Given mesh and RHS function f, assembles the linear variational solver
+    Given mesh and RHS function f, assembles the linear variational solver for the mixed formulation
 
     :param mesh: Mesh object
     :param f: UFL expression for RHS function f
@@ -58,8 +58,8 @@ def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     tau, v = fd.TestFunctions(W)
 
     # build LHS and RHS of mixed helmholtz problem
-    a = mixed_helmholtz_LHS(sigma, u, tau, v, k, delta_0)
-    L = mixed_helmholtz_RHS(f, v, k, delta_0)
+    a = helmholtz_LHS(sigma, u, tau, v, k, delta_0)
+    L = helmholtz_RHS(f, v, k, delta_0)
 
     # build problem and solver for mixed helmholtz problem
     appctx = {"k": k, "delta": delta, "f": f}
