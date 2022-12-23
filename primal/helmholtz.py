@@ -37,7 +37,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         v = fd.TestFunction(W)
 
         # LHS of coupled pHSS iteration
-        a = (fd.inner(fd.Constant(-2j*delta*k**2 - k**2 + delta**2)*u_new, v)*fd.dx
+        a = (fd.inner(fd.Constant(-2j*delta*k**2 + delta**2 - k**2)*u_new, v)*fd.dx
              + fd.inner(fd.Constant(-1j*k**2 + delta)*u_new, v)*fd.ds
              + fd.inner(fd.grad(u_new), fd.grad(v))*fd.dx)
 
@@ -74,9 +74,9 @@ class HSS_PC(fd.preconditioners.base.PCBase):
 
         u_old = fd.Function(W)
         self.u_old = u_old
-        self.hss_rhs = (fd.Constant((k-1)/(k+1))*(fd.inner(fd.Constant(-2j*delta*k**2 + (k**2- delta**2))*u_old, v)*fd.dx)
+        self.hss_rhs = (fd.Constant((k-1)/(k+1))*(fd.inner(fd.Constant(-2j*delta*k**2 - delta**2 + k**2)*u_old, v)*fd.dx
                                                   + fd.inner(fd.Constant(-1j*k**2 - delta)*u_old, v)*fd.ds
-                                                  - fd.inner(fd.grad(u_old), fd.grad(v))*fd.dx)
+                                                  - fd.inner(fd.grad(u_old), fd.grad(v))*fd.dx))
 
     def update(self, pc):
         pass
@@ -108,4 +108,4 @@ class HSS_PC(fd.preconditioners.base.PCBase):
     def view(self, pc, viewer=None):
         super(HSS_PC, self).view(pc, viewer)
         viewer.printfASCII("HSS preconditioner for the primal formulation of the indefinite helmholtz equation")
-        self.ksp.view(viewer)
+        self.ksp.view(viewer) 

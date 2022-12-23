@@ -13,9 +13,9 @@ def helmholtz_LHS(u, v, k, delta_0):
     :param delta_0: shift problem parameter
     :return a: UFL expression for the LHS
     """
-    a= (fd.inner(fd.Constant(-1j*(k**2 - delta_0**2)+2*delta_0*k)*u, v)*fd.dx
-        + fd.inner(fd.Constant(1j)*fd.grad(u), fd.grad(v))*fd.dx
-        + fd.inner(fd.Constant(1j*delta_0+k)*u, v)*fd.ds)
+    a = (fd.inner(fd.Constant((-delta_0 + 1j*k)**2)*u, v)*fd.dx
+        + fd.inner(fd.grad(u), fd.grad(v))*fd.dx
+        - fd.inner(fd.Constant(-delta_0 + 1j*k)*u, v)*fd.ds)
     return a
 
 
@@ -29,7 +29,7 @@ def helmholtz_RHS(f, v, k, delta_0):
     :param delta_0: shift problem parameter
     :return L: UFL expression for the RHS
     """
-    return fd.inner(fd.Constant(1j)*f, v)*fd.dx
+    return fd.inner(f, v)*fd.dx
 
 
 def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
