@@ -87,7 +87,7 @@ def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, deg
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_constant(mesh_refinement, parameters, k, delta, delta_0, degree):
+def build_problem_uniform_source(mesh_refinement, parameters, k, delta, delta_0, degree):
     """
     Assembles linear variational solver for f = 1 on UnitSquareMesh
 
@@ -109,7 +109,8 @@ def build_problem_constant(mesh_refinement, parameters, k, delta, delta_0, degre
 
 def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree):
     """
-    Assembles linear variational solver for u = sin^2(pi*x)sin^2(pi*y) on UnitSquareMesh
+    Assembles linear variational solver for u = sin^2(pi*x)sin^2(pi*y) (method of 
+    manufactured solutions) on UnitSquareMesh
 
     :param mesh_refinement: refinement level of the mesh
     :param parameters: dictionary of solver parameters

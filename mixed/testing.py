@@ -1,13 +1,13 @@
 import firedrake as fd
 from firedrake.petsc import PETSc
 from argparse import ArgumentParser, BooleanOptionalAction
-from problems import build_problem_box_source, build_problem_constant, build_problem_sin2
+from problems import build_problem_box_source, build_problem_uniform_source, build_problem_sin2
 import numpy as np
 
 
 # parsing command-line arguments
 parser = ArgumentParser(description="""Find the amount of GMRES iterations""")
-parser.add_argument("--problem", type=str, choices=("box_source", "constant", "sin2"),
+parser.add_argument("--problem", type=str, choices=("box_source", "uniform_source", "sin2"),
                     help="Problem type", required=True)
 parser.add_argument("--mesh_refinement", type=str, choices=("2k", "k^(3/2)"),
                     help="Mesh refinement as a function of k", required=True)
@@ -100,8 +100,8 @@ parameters = {
 # creating the linear variational solver
 if args.problem == "box_source":
     solver, w = build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree)
-if args.problem == "constant":
-    solver, w = build_problem_constant(mesh_refinement, parameters, k, delta, delta_0, degree)
+if args.problem == "uniform":
+    solver, w = build_problem_uniform_source(mesh_refinement, parameters, k, delta, delta_0, degree)
 if args.problem == "sin2":
     solver, w = build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree)
 
