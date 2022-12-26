@@ -96,7 +96,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
             fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.q)
 
             with self.w.dat.vec_wo as w_, self.q.dat.vec_ro as q_:
-                self.ksp.solve(q_ + 2*k/(k+1)*X, w_)  # corresponds to self.hss_rhs + inner(f,v)
+                self.ksp.solve(q_ + 2*k/(k + 1)*X, w_)  # corresponds to self.hss_rhs + inner(f,v)
         
         #copy the result into Y
         with self.w.dat.vec_ro as w_:

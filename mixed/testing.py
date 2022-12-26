@@ -109,7 +109,7 @@ if args.problem == "sin2":
 # solving
 solver.solve()
 
-if args.plot: # save plot
+if args.plot:  # save plot
     sigma, u = w.split()
     file = fd.File(f"plots/{args.problem}_{mesh_refinement}_{int(k)}_{int(delta)}/plot.pvd")
     file.write(sigma, u)

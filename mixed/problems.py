@@ -15,7 +15,7 @@ def helmholtz_LHS(sigma, u, tau, v, k, delta_0):
     :param delta_0: shift problem parameter
     :return a: UFL expression for the LHS
     """
-    a = (fd.inner(fd.Constant(delta_0-1j*k)*sigma, tau)*fd.dx
+    a = (fd.inner(fd.Constant(delta_0 - 1j*k)*sigma, tau)*fd.dx
          - fd.inner(fd.grad(u), tau)*fd.dx
          + fd.inner(sigma, fd.grad(v))*fd.dx
          + fd.inner(fd.Constant(delta_0-1j*k)*u, v)*fd.dx
@@ -33,7 +33,7 @@ def helmholtz_RHS(f, v, k, delta_0):
     :param delta_0: shift problem parameter
     :return L: UFL expression for the RHS
     """
-    return -fd.inner(f/fd.Constant(-delta_0+1j*k), v)*fd.dx
+    return - fd.inner(f/fd.Constant(-delta_0 + 1j*k), v)*fd.dx
 
 
 def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
@@ -93,7 +93,7 @@ def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, deg
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_uniform(mesh_refinement, parameters, k, delta, delta_0, degree):
+def build_problem_uniform_source(mesh_refinement, parameters, k, delta, delta_0, degree):
     """
     Assembles linear variational solver for f = 1 on UnitSquareMesh
 
@@ -130,8 +130,8 @@ def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree):
     mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
 
     x, y = fd.SpatialCoordinate(mesh)
-    f = ((-delta_0+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
-         + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) 
+    f = (( -delta_0 + 1j*k)**2 * fd.sin(fd.pi*x)**2 * fd.sin(fd.pi*y)**2
+         + fd.pi**2*(fd.cos(2*fd.pi*(x + y)) + fd.cos(2*fd.pi*(x - y)) 
          - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)

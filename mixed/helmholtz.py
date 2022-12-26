@@ -37,10 +37,10 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         tau, v = fd.TestFunctions(W)
 
         # LHS of coupled pHSS iteration
-        a = (fd.inner(fd.Constant((delta-1j)*k)*sigma_new, tau)*fd.dx
+        a = (fd.inner(fd.Constant((delta - 1j)*k)*sigma_new, tau)*fd.dx
              - fd.inner(fd.grad(u_new), tau)*fd.dx
              + fd.inner(sigma_new, fd.grad(v))*fd.dx
-             + fd.inner(fd.Constant((delta-1j)*k)*u_new, v)*fd.dx
+             + fd.inner(fd.Constant((delta - 1j)*k)*u_new, v)*fd.dx
              + fd.inner(fd.Constant(k)*u_new, v)*fd.ds)
 
         # initializing pHSS KSP
@@ -77,11 +77,11 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         w_old = fd.Function(W)
         self.w_old = w_old
         sigma_old, u_old = w_old.split()
-        self.hss_rhs = (fd.Constant((k-1)/(k+1))
-                        *(fd.inner(fd.Constant((delta+1j)*k)*sigma_old, tau)*fd.dx
+        self.hss_rhs = (fd.Constant((k - 1)/(k + 1))
+                        *(fd.inner(fd.Constant((delta + 1j)*k)*sigma_old, tau)*fd.dx
                           + fd.inner(fd.grad(u_old), tau)*fd.dx
                           - fd.inner(sigma_old, fd.grad(v))*fd.dx
-                          + fd.inner(fd.Constant((delta+1j)*k)*u_old, v)*fd.dx
+                          + fd.inner(fd.Constant((delta + 1j)*k)*u_old, v)*fd.dx
                           + fd.inner(fd.Constant(k)*u_old, v)*fd.ds))
 
     def update(self, pc):
@@ -102,7 +102,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
             fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.q)
 
             with self.w.dat.vec_wo as w_, self.q.dat.vec_ro as q_:
-                self.ksp.solve(q_ + 2*k/(k+1)*X, w_)  # corresponds to self.hss_rhs + inner(f,v)
+                self.ksp.solve(q_ + 2*k/(k + 1)*X, w_)  # corresponds to self.hss_rhs + inner(f,v)
         
         #copy the result into Y
         with self.w.dat.vec_ro as w_:
@@ -125,8 +125,8 @@ class Schur(fd.AuxiliaryOperatorPC):
     def form(self, pc, v, u):
         k = self.get_appctx(pc).get("k")
         delta = self.get_appctx(pc).get("delta")
-        a = (fd.inner(fd.Constant(1/((delta-1j)*k))*fd.grad(u), fd.grad(v))*fd.dx
-            + fd.inner(fd.Constant((delta-1j)*k)*u, v)*fd.dx
+        a = (fd.inner(fd.Constant(1/((delta - 1j)*k))*fd.grad(u), fd.grad(v))*fd.dx
+            + fd.inner(fd.Constant((delta - 1j)*k)*u, v)*fd.dx
             + fd.inner(fd.Constant(k)*u, v)*fd.ds)
         bcs = None
         return (a, bcs)

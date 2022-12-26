@@ -124,8 +124,8 @@ def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree):
     mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
 
     x, y = fd.SpatialCoordinate(mesh)
-    f = ((-delta_0+1j*k)**2*fd.sin(fd.pi*x)**2*fd.sin(fd.pi*y)**2
-         + fd.pi**2*(fd.cos(2*fd.pi*(x+y)) + fd.cos(2*fd.pi*(x-y)) 
+    f = ((-delta_0 + 1j*k)**2 * fd.sin(fd.pi*x)**2 * fd.sin(fd.pi*y)**2
+         + fd.pi**2 * (fd.cos(2*fd.pi*(x + y)) + fd.cos(2*fd.pi*(x - y)) 
          - fd.cos(2*fd.pi*x) - fd.cos(2*fd.pi*y)))
 
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
