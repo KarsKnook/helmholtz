@@ -100,7 +100,7 @@ parameters = {
 # creating the linear variational solver
 if args.problem == "box_source":
     solver, w = build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree)
-if args.problem == "uniform":
+if args.problem == "uniform_source":
     solver, w = build_problem_uniform_source(mesh_refinement, parameters, k, delta, delta_0, degree)
 if args.problem == "sin2":
     solver, w = build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree)
