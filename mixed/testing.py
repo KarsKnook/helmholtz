@@ -1,6 +1,6 @@
 import firedrake as fd
 from firedrake.petsc import PETSc
-from argparse import ArgumentParser, BooleanOptionalAction
+from argparse import ArgumentParser
 from problems import build_problem_box_source, build_problem_uniform_source, build_problem_sin2
 import numpy as np
 
@@ -21,8 +21,8 @@ parser.add_argument("--HSS_method", type=str, choices=("gamg", "lu"),
 parser.add_argument("--HSS_it", type=str, choices=("k^(1/2)", "k", "k^(3/2)"),
                     help="Amount of HSS iterations as a function of k", default="k")
 parser.add_argument("--degree", type=int, help="Degree of CGk", default=2)
-parser.add_argument('--plot', action=BooleanOptionalAction, help="Save plot")
-parser.add_argument('--show_args', action=BooleanOptionalAction, help="Output all the arguments")
+parser.add_argument('--plot', action="store_true", help="Save plot")
+parser.add_argument('--show_args', action="store_true", help="Output all the arguments")
 args = parser.parse_args()
 
 k = args.k
