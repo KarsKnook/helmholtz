@@ -93,6 +93,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         """
         k = fd.Constant(self.k)
         #first solve
+        self.w.assign(0)
         with self.w.dat.vec_wo as w_:
             self.ksp.solve(X, w_)  # b = inner(f, v) is the only RHS term because x^0 = 0
 
@@ -100,7 +101,8 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         for i in range(self.its - 1):
             self.w_old.assign(self.w)
             fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.q)
-
+            
+            self.w.assign(0)
             with self.w.dat.vec_wo as w_, self.q.dat.vec_ro as q_:
                 self.ksp.solve(q_ + 2*k/(k + 1)*X, w_)  # corresponds to self.hss_rhs + inner(f,v)
         

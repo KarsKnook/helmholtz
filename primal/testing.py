@@ -21,6 +21,7 @@ parser.add_argument("--HSS_method", type=str, choices=("gamg", "lu"),
                     help="Solver method for HSS iteration", default="gamg")
 parser.add_argument("--HSS_it", type=str, choices=("k^(1/2)", "k", "k^(3/2)"),
                     help="Amount of HSS iterations as a function of k", default="k")
+parser.add_argument('--HSS_monitor', action="store_true", help="Show residuals and converged reason of every HSS iteration")
 parser.add_argument('--plot', action="store_true", help="Save plot")
 parser.add_argument('--show_args', action="store_true", help="Output all the arguments")
 args = parser.parse_args()
@@ -44,6 +45,11 @@ if args.HSS_it == "k":
 if args.HSS_it == "k^(3/2)":
     HSS_it = int(np.ceil(k**(3/2)))
 
+if args.HSS_monitor:
+    HSS_monitor = {"monitor": None, "converged_reason": None}
+else:
+    HSS_monitor = {}
+
 if args.show_args:  # print args
     PETSc.Sys.Print(args)
 
@@ -57,7 +63,7 @@ amg_parameters = {
 }
 
 helmhss_parameters = {
-    "ksp_type": "richardson",
+    "ksp_type": "gmres",
     "ksp_max_it": sweeps,
     "pc_type": args.HSS_method,
     "pc_mg_type": "multiplicative",
@@ -65,10 +71,11 @@ helmhss_parameters = {
     "mg_levels": amg_parameters,
     "mat_type": "nest",
     "its": HSS_it,
+    "ksp": HSS_monitor
 }
 
 parameters = {
-    "ksp_type": "gmres",
+    "ksp_type": "fgmres",
     "ksp_max_it": max_it,
     "ksp_rtol": 1e-6,
     "pc_type": "python",
