@@ -107,8 +107,8 @@ class HSS_PC(fd.preconditioners.base.PCBase):
 
     def applyTranspose(self, pc, x, y):
         raise NotImplementedError
-    
+
     def view(self, pc, viewer=None):
         super(HSS_PC, self).view(pc, viewer)
         viewer.printfASCII("HSS preconditioner for the primal formulation of the indefinite helmholtz equation")
-        self.ksp.view(viewer) 
+        self.ksp.view(viewer)
