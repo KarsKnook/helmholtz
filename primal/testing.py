@@ -25,7 +25,8 @@ parser.add_argument("--HSS_method", type=str, choices=("gamg", "lu"),
                     help="Solver method for HSS iteration", default="gamg")
 parser.add_argument("--HSS_it", type=str, choices=("k^(1/2)", "k", "k^(3/2)"),
                     help="Amount of HSS iterations as a function of k", default="k")
-parser.add_argument('--HSS_monitor', type=str, choices=("none", "all", "converged_reason", "monitor"),
+parser.add_argument("--m", type=float, help="Multiple for number of HSS iterations", default=1)
+parser.add_argument('--HSS_monitor', type=str, choices=("none", "all", "converged_rate", "monitor"),
                     help="Show residuals and converged reason of every HSS iteration")
 parser.add_argument('--plot', action="store_true", help="Save plot")
 parser.add_argument('--show_args', action="store_true", help="Output all the arguments")
@@ -49,9 +50,10 @@ if args.HSS_it == "k":
     HSS_it = int(np.ceil(k))
 if args.HSS_it == "k^(3/2)":
     HSS_it = int(np.ceil(k**(3/2)))
+HSS_it*=args.m
 
 HSS_monitor = {}
-for option in ("monitor", "converged_reason"):
+for option in ("monitor", "converged_rate"):
     if args.HSS_monitor in (option, "all"):
         HSS_monitor[option] = None
 
@@ -69,12 +71,12 @@ amg_parameters = {
 
 helmhss_parameters = {
     "ksp_type": "gmres",
-    "ksp_rtol": 1e-100,
+    # "ksp_rtol": 1e-100,
     "ksp_atol": 1e-100,
     "ksp_stol": 1e-100,
     "ksp_max_it": sweeps,
     # "ksp_min_it": sweeps,
-    "ksp_converged_skip": None,
+    # "ksp_converged_skip": None,
     "ksp_converged_maxits": None,
     "pc_type": args.HSS_method,
     "pc_mg_type": "multiplicative",
@@ -86,21 +88,26 @@ helmhss_parameters = {
     #    "coarse_eq_limit": 200,
     # },
     "mat_type": "nest",
-    "its": HSS_it,
+    # "its": HSS_it,
+    "its": 1,
     "ksp": HSS_monitor
 }
 
 parameters = {
+    "mat_type": "matfree",
     "ksp_type": "fgmres",
-    "ksp_max_it": max_it,
-    "ksp_rtol": 1e-6,
+    "ksp": {
+    	"monitor": None,
+    	# "converged_reason": None,
+        "converged_rate": None,
+    	"rtol": 1e-5,
+    	"max_it": max_it,
+    	#"view": None,
+        "converged_maxits": None,
+    },
     "pc_type": "python",
     "pc_python_type": "helmholtz.HSS_PC",
     "helmhss": helmhss_parameters,
-    "mat_type": "matfree",
-    "ksp_monitor": None,
-    "ksp_converged_reason": None,
-    #"ksp_view": None,
 }
 
 # creating the linear variational solver
@@ -111,16 +118,23 @@ if args.problem == "uniform_source":
 if args.problem == "sin2":
     solver, w = build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree)
 
+PETSc.Sys.Print("Setting up solver...")
 with solver.inserted_options():
    solver.snes.setUp()
    solver.snes.getKSP().setUp()
    solver.snes.getKSP().getPC().setUp()
+PETSc.Sys.Print("Solver set up")
 
-PETSc.Sys.Print(f"Number of processors: {w.comm.size}")
-PETSc.Sys.Print(f"Degrees of freedom: {w.function_space().dim()}")
-PETSc.Sys.Print(f"Degrees of freedom per core: {w.function_space().dim()//w.comm.size}\n")
+ndofs = w.function_space().dim()
+nranks = w.comm.size
+PETSc.Sys.Print(f"Number of processors: {nranks}")
+PETSc.Sys.Print(f"Degrees of freedom: {ndofs}")
+PETSc.Sys.Print(f"Degrees of freedom per core: {ndofs/nranks}\n")
+PETSc.Sys.Print(f"Total floating point numbers: {2*ndofs}")
+PETSc.Sys.Print(f"Total floating point numbers per core: {2*ndofs/nranks}")
 
 # solving
+PETSc.Sys.Print("Solving...")
 stime = MPI.Wtime()
 solver.solve()
 etime = MPI.Wtime()
