@@ -1,5 +1,6 @@
 import firedrake as fd
 import warnings
+import numpy as np
 warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm 
 
 
@@ -63,7 +64,7 @@ def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     return solver, w
 
 
-def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree):
+def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree, HSS_method):
     """
     Assembles linear variational solver for source function in 0.2x0.2 box on UnitSquareMesh
 
@@ -76,7 +77,13 @@ def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, deg
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
-    mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
+    if HSS_method == "mg":
+        mesh_refinement = int(np.ceil(mesh_refinement/2))
+        mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
+        hierarchy = fd.MeshHierarchy(mesh, 2)
+        mesh = hierarchy[-1]
+    else:
+        mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
 
     x, y = fd.SpatialCoordinate(mesh)
     f = (fd.conditional(fd.ge(x, 0.4), 1, 0)

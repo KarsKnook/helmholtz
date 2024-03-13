@@ -21,8 +21,8 @@ parser.add_argument("--delta_0", type=float, help="Shift problem parameter delta
 parser.add_argument("--degree", type=int, help="Degree of CGk", default=2)
 parser.add_argument("--sweeps", type=int, help="Maximum amount of multigrid sweeps", default=15)
 parser.add_argument("--max_it", type=int, help="Maximum amount of GMRES iterations", default=40)
-parser.add_argument("--HSS_method", type=str, choices=("gamg", "lu"),
-                    help="Solver method for HSS iteration", default="gamg")
+parser.add_argument("--HSS_method", type=str, choices=("mg", "gamg", "lu"),
+                    help="Solver method for HSS iteration", default="mg")
 parser.add_argument("--HSS_it", type=str, choices=("k^(1/2)", "k", "k^(3/2)"),
                     help="Amount of HSS iterations as a function of k", default="k")
 parser.add_argument("--m", type=float, help="Multiple for number of HSS iterations", default=1)
@@ -69,6 +69,11 @@ amg_parameters = {
     # "pc_type": "pbjacobi"
 }
 
+mg_parameters = {
+    "ksp_type": "chebyshev",
+    "pc_type": "jacobi",
+}
+
 helmhss_parameters = {
     "ksp_type": "gmres",
     # "ksp_rtol": 1e-100,
@@ -79,15 +84,19 @@ helmhss_parameters = {
     # "ksp_converged_skip": None,
     "ksp_converged_maxits": None,
     "pc_type": args.HSS_method,
+    "mat_type": "matfree" if args.HSS_method == "mg" else "aij",
     "pc_mg_type": "multiplicative",
     "pc_mg_cycle_type": "w",
-    "mg_levels": amg_parameters,
+    "mg_levels": mg_parameters if args.HSS_method == "mg" else amg_parameters,
+    "mg_coarse_pc_type": "python",
+    "mg_coarse_pc_python_type": "firedrake.AssembledPC",
+    "mg_coarse_assembled_pc_type": "lu",
+    "mg_coarse_assembled_pc_factor_mat_solver_type": "mumps",
     # "pc_gamg": {
     #    "repartition": False,
     #    "process_eq_limit": 200,
     #    "coarse_eq_limit": 200,
     # },
-    "mat_type": "nest",
     # "its": HSS_it,
     "its": 1,
     "ksp": HSS_monitor
@@ -112,7 +121,7 @@ parameters = {
 
 # creating the linear variational solver
 if args.problem == "box_source":
-    solver, w = build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree)
+    solver, w = build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree, args.HSS_method)
 if args.problem == "uniform_source":
     solver, w = build_problem_uniform_source(mesh_refinement, parameters, k, delta, delta_0, degree)
 if args.problem == "sin2":
@@ -132,6 +141,33 @@ PETSc.Sys.Print(f"Degrees of freedom: {ndofs}")
 PETSc.Sys.Print(f"Degrees of freedom per core: {ndofs/nranks}\n")
 PETSc.Sys.Print(f"Total floating point numbers: {2*ndofs}")
 PETSc.Sys.Print(f"Total floating point numbers per core: {2*ndofs/nranks}")
+
+
+class CustomTransferManager(fd.TransferManager):
+
+    def prolong(self, source, target):
+        # Vc -> Vf
+        try:
+            super(CustomTransferManager, self).prolong(source, target)
+        except NotImplementedError:
+            pass
+
+    def restrict(self, source, target):
+        # Vf^* -> Vc^*
+        try:
+            super(CustomTransferManager, self).restrict(source, target)
+        except NotImplementedError:
+            pass
+
+    def inject(self, source, target):
+        # Vf-> Vc
+        try:
+            super(CustomTransferManager, self).inject(source, target)
+        except NotImplementedError:
+            pass
+
+transfer = CustomTransferManager()
+solver.set_transfer_manager(transfer)
 
 # solving
 PETSc.Sys.Print("Solving...")

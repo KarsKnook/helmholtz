@@ -62,7 +62,11 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         ksp.incrementTabLevel(1, parent=pc)
         ksp.setOperators(Pmat)
         ksp.setOptionsPrefix(options_prefix)
-        with dmhooks.add_hooks(dm, self, appctx=context.appctx, save=False):
+
+        fcp = self.context.fc_params
+        self._ctx_ref = self.new_snes_ctx(pc, a, bcs, mat_type,
+                                          fcp=fcp, options_prefix=options_prefix)
+        with dmhooks.add_hooks(dm, self, appctx=self._ctx_ref, save=False):
             ksp.setFromOptions()  # ensures appctx is passed on to the next ksp and pc
         ksp.setUp()
         self.ksp = ksp
@@ -85,11 +89,14 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         """
         Based on asQ/asQ/diag_preconditioner.py
         """
+        dm = pc.getDM()
+
         k = fd.Constant(self.k)
         #first solve
         self.w.assign(0)
         with self.w.dat.vec_wo as w_:
-            self.ksp.solve(X, w_)  # b = inner(f, v) is the only RHS term because x^0 = 0
+            with dmhooks.add_hooks(dm, self, appctx=self._ctx_ref):
+                self.ksp.solve(X, w_)  # b = inner(f, v) is the only RHS term because x^0 = 0
 
         #all other solves
         for i in range(self.its - 1):
