@@ -93,7 +93,7 @@ def build_problem_box_source(nx, parameters, k, delta, delta_0, degree, HSS_meth
     """
     Assembles linear variational solver for source function in 0.2x0.2 box on UnitSquareMesh
 
-    :param nx: elements along an edge
+    :param nx: number of elements along an edge
     :param parameters: dictionary of solver parameters
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
@@ -125,7 +125,7 @@ def build_problem_uniform_source(nx, parameters, k, delta, delta_0, degree, HSS_
     """
     Assembles linear variational solver for f = 1 on UnitSquareMesh
 
-    :param nx: elements along an edge
+    :param nx: number of elements along an edge
     :param parameters: dictionary of solver parameters
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
@@ -154,7 +154,7 @@ def build_problem_sin2(nx, parameters, k, delta, delta_0, degree, HSS_method, le
     Assembles linear variational solver for u = sin^2(pi*x)sin^2(pi*y) (method of
     manufactured solutions) on UnitSquareMesh
 
-    :param nx: elements along an edge
+    :param nx: number of elements along an edge
     :param parameters: dictionary of solver parameters
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
