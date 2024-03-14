@@ -118,5 +118,5 @@ class HSS_PC(fd.preconditioners.base.PCBase):
 
     def view(self, pc, viewer=None):
         super(HSS_PC, self).view(pc, viewer)
-        viewer.printfASCII("HSS preconditioner for the primal formulation of the indefinite helmholtz equation")
+        viewer.printfASCII("HSS preconditioner for the primal formulation of the indefinite helmholtz equation \n")
         self.ksp.view(viewer)
