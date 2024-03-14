@@ -122,11 +122,11 @@ parameters = {
 
 # creating the linear variational solver
 if args.problem == "box_source":
-    solver, w = build_problem_box_source(nx, levels, parameters, k, delta, delta_0, degree, args.HSS_method)
+    solver, w = build_problem_box_source(nx, levels, parameters, k, delta, delta_0, degree, args.HSS_method, levels)
 if args.problem == "uniform_source":
-    solver, w = build_problem_uniform_source(nx, levels, parameters, k, delta, delta_0, degree)
+    solver, w = build_problem_uniform_source(nx, levels, parameters, k, delta, delta_0, degree, args.HSS_method, levels)
 if args.problem == "sin2":
-    solver, w = build_problem_sin2(nx, levels, parameters, k, delta, delta_0, degree)
+    solver, w = build_problem_sin2(nx, levels, parameters, k, delta, delta_0, degree, args.HSS_method, levels)
 
 ndofs = w.function_space().dim()
 nranks = w.comm.size

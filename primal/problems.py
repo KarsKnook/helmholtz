@@ -89,7 +89,7 @@ def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     return solver, w
 
 
-def build_problem_box_source(nx, levels, parameters, k, delta, delta_0, degree, HSS_method, levels=2):
+def build_problem_box_source(nx, parameters, k, delta, delta_0, degree, HSS_method, levels):
     """
     Assembles linear variational solver for source function in 0.2x0.2 box on UnitSquareMesh
 
@@ -105,14 +105,10 @@ def build_problem_box_source(nx, levels, parameters, k, delta, delta_0, degree, 
     :return w: solution function
     """
     if HSS_method == "mg":
-        if nx % 2**(levels-1) == 0:
-            nx = nx // 2**(levels-1)
-            mesh = fd.UnitSquareMesh(nx, nx)
-            hierarchy = fd.MeshHierarchy(mesh, levels-1)
-            mesh = hierarchy[-1]
-        else:
-            raise ValueError(f"Cannot create coarse mesh hierarchy of {nx}x{nx} UnitSquareMesh with {levels} levels")
-
+        nx = nx // 2**(levels-1)
+        mesh = fd.UnitSquareMesh(nx, nx)
+        hierarchy = fd.MeshHierarchy(mesh, levels-1)
+        mesh = hierarchy[-1]
     else:
         mesh = fd.UnitSquareMesh(nx, nx)
 
@@ -125,7 +121,7 @@ def build_problem_box_source(nx, levels, parameters, k, delta, delta_0, degree, 
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_uniform_source(nx, levels, parameters, k, delta, delta_0, degree, HSS_method, levels=2):
+def build_problem_uniform_source(nx, parameters, k, delta, delta_0, degree, HSS_method, levels):
     """
     Assembles linear variational solver for f = 1 on UnitSquareMesh
 
@@ -141,20 +137,19 @@ def build_problem_uniform_source(nx, levels, parameters, k, delta, delta_0, degr
     :return w: solution function
     """
     if HSS_method == "mg":
-        if nx % 2**(levels-1) == 0:
-            nx = nx // 2**(levels-1)
-            mesh = fd.UnitSquareMesh(nx, nx)
-            hierarchy = fd.MeshHierarchy(mesh, levels-1)
-            mesh = hierarchy[-1]
-        else:
-            raise ValueError(f"Cannot create coarse mesh hierarchy of {nx}x{nx} UnitSquareMesh with {levels} levels")
+        nx = nx // 2**(levels-1)
+        mesh = fd.UnitSquareMesh(nx, nx)
+        hierarchy = fd.MeshHierarchy(mesh, levels-1)
+        mesh = hierarchy[-1]
+    else:
+        mesh = fd.UnitSquareMesh(nx, nx)
 
     f = fd.Constant(1, mesh)
 
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_sin2(nx, levels, parameters, k, delta, delta_0, degree, HSS_method, levels=2):
+def build_problem_sin2(nx, parameters, k, delta, delta_0, degree, HSS_method, levels):
     """
     Assembles linear variational solver for u = sin^2(pi*x)sin^2(pi*y) (method of
     manufactured solutions) on UnitSquareMesh
@@ -171,13 +166,12 @@ def build_problem_sin2(nx, levels, parameters, k, delta, delta_0, degree, HSS_me
     :return w: solution function
     """
     if HSS_method == "mg":
-        if nx % 2 ** (levels - 1) == 0:
-            nx = nx // 2 ** (levels - 1)
-            mesh = fd.UnitSquareMesh(nx, nx)
-            hierarchy = fd.MeshHierarchy(mesh, levels - 1)
-            mesh = hierarchy[-1]
-        else:
-            raise ValueError(f"Cannot create coarse mesh hierarchy of {nx}x{nx} UnitSquareMesh with {levels} levels")
+        nx = nx // 2**(levels-1)
+        mesh = fd.UnitSquareMesh(nx, nx)
+        hierarchy = fd.MeshHierarchy(mesh, levels-1)
+        mesh = hierarchy[-1]
+    else:
+        mesh = fd.UnitSquareMesh(nx, nx)
 
     x, y = fd.SpatialCoordinate(mesh)
     f = ((-delta_0 + 1j*k)**2 * fd.sin(fd.pi*x)**2 * fd.sin(fd.pi*y)**2
