@@ -17,13 +17,16 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         _, P = pc.getOperators()
         context = P.getPythonContext()
         self.context = context
+        bcs = context.bcs
+        dm = pc.getDM()
+        appctx = dmhooks.get_appctx(dm).appctx
 
         # obtaining k, delta and f
-        k = context.appctx.get("k")
+        k = appctx.get("k")
         self.k = k
-        delta = context.appctx.get("delta")
+        delta = appctx.get("delta")
         self.delta = delta
-        f = context.appctx.get("f")
+        f = appctx.get("f")
 
         # initiliazing test and trial functions
         test, trial = context.a.arguments()
@@ -46,7 +49,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         mat_type = opts.getString(options_prefix + "mat_type",
                                   fd.parameters["default_matrix_type"])
 
-        A = fd.assemble(a, form_compiler_parameters=context.fc_params,
+        A = fd.assemble(a, bcs=bcs, form_compiler_parameters=context.fc_params,
                      mat_type=mat_type, options_prefix=options_prefix)
 
         Pmat = A.petscmat
@@ -54,11 +57,10 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         tnullsp = P.getTransposeNullSpace()
         if tnullsp.handle != 0:
             Pmat.setTransposeNullSpace(tnullsp)
-        dm = W.dm
-        
+
         ksp = PETSc.KSP().create(comm=pc.comm)
         ksp.setDM(dm)
-        ksp.setDMActive(False)
+        ksp.setDMActive(True)
         ksp.incrementTabLevel(1, parent=pc)
         ksp.setOperators(Pmat)
         ksp.setOptionsPrefix(options_prefix)
@@ -68,13 +70,12 @@ class HSS_PC(fd.preconditioners.base.PCBase):
                                           fcp=fcp, options_prefix=options_prefix)
         with dmhooks.add_hooks(dm, self, appctx=self._ctx_ref, save=False):
             ksp.setFromOptions()  # ensures appctx is passed on to the next ksp and pc
-        ksp.setUp()
         self.ksp = ksp
 
         # initializing self.hss_rhs for multiple iterations
         self.w = fd.Function(W)  # to store solution every HSS iteration
         self.q = fd.Function(W)  # to assemble self.hss_rhs into
-        self.its = PETSc.Options().getInt(options_prefix + "its")
+        self.its = PETSc.Options().getInt(options_prefix + "its", 1)
 
         u_old = fd.Function(W)
         self.u_old = u_old
@@ -107,7 +108,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
             with self.w.dat.vec_wo as w_, self.q.dat.vec_ro as q_:
                 q_.axpy(2*k/(k+1), X)  # corresponds to self.hss_rhs + inner(f,v)
                 self.ksp.solve(q_, w_)
-        
+
         #copy the result into Y
         with self.w.dat.vec_ro as w_:
             w_.copy(Y)
