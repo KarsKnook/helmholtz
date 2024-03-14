@@ -1,6 +1,31 @@
 import firedrake as fd
 import warnings
+import numpy as np
 warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm 
+
+
+class CustomTransferManager(fd.TransferManager):
+
+    def prolong(self, source, target):
+        # Vc -> Vf
+        try:
+            super(CustomTransferManager, self).prolong(source, target)
+        except NotImplementedError:
+            pass
+
+    def restrict(self, source, target):
+        # Vf^* -> Vc^*
+        try:
+            super(CustomTransferManager, self).restrict(source, target)
+        except NotImplementedError:
+            pass
+
+    def inject(self, source, target):
+        # Vf-> Vc
+        try:
+            super(CustomTransferManager, self).inject(source, target)
+        except NotImplementedError:
+            pass
 
 
 def helmholtz_LHS(sigma, u, tau, v, k, delta_0):
@@ -66,23 +91,34 @@ def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     w = fd.Function(W)
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx)
+
+    transfer = CustomTransferManager()
+    solver.set_transfer_manager(transfer)
     return solver, w
 
 
-def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, degree):
+def build_problem_box_source(nx, parameters, k, delta, delta_0, degree, HSS_method, levels):
     """
     Assembles linear variational solver for source function in 0.2x0.2 box on UnitSquareMesh
 
-    :param mesh_refinement: refinement level of the mesh
+    :param nx: number of elements along an edge
     :param parameters: dictionary of solver parameters
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
     :param delta_0: shift problem parameter
     :param degree: degree of CGk
+    :param HSS_method: solver method for HSS problems
+    :param levels: amount of levels in geometric mg
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
-    mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
+    if HSS_method == "mg":
+        nx = nx // 2**(levels-1)
+        mesh = fd.UnitSquareMesh(nx, nx)
+        hierarchy = fd.MeshHierarchy(mesh, levels-1)
+        mesh = hierarchy[-1]
+    else:
+        mesh = fd.UnitSquareMesh(nx, nx)
 
     x, y = fd.SpatialCoordinate(mesh)
     f = (fd.conditional(fd.ge(x, 0.4), 1, 0)
@@ -93,41 +129,57 @@ def build_problem_box_source(mesh_refinement, parameters, k, delta, delta_0, deg
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_uniform_source(mesh_refinement, parameters, k, delta, delta_0, degree):
+def build_problem_uniform_source(nx, parameters, k, delta, delta_0, degree, HSS_method, levels):
     """
     Assembles linear variational solver for f = 1 on UnitSquareMesh
 
-    :param mesh_refinement: refinement level of the mesh
+    :param nx: number of elements along an edge
     :param parameters: dictionary of solver parameters
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
     :param delta_0: shift problem parameter
     :param degree: degree of CGk
+    :param HSS_method: solver method for HSS problems
+    :param levels: amount of levels in geometric mg
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
-    mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
+    if HSS_method == "mg":
+        nx = nx // 2**(levels-1)
+        mesh = fd.UnitSquareMesh(nx, nx)
+        hierarchy = fd.MeshHierarchy(mesh, levels-1)
+        mesh = hierarchy[-1]
+    else:
+        mesh = fd.UnitSquareMesh(nx, nx)
 
     f = fd.Constant(1, mesh)
 
     return build_problem(mesh, f, parameters, k, delta, delta_0, degree)
 
 
-def build_problem_sin2(mesh_refinement, parameters, k, delta, delta_0, degree):
+def build_problem_sin2(nx, parameters, k, delta, delta_0, degree, HSS_method, levels):
     """
     Assembles linear variational solver for u = sin^2(pi*x)sin^2(pi*y) (method of 
     manufactured solutions) on UnitSquareMesh
 
-    :param mesh_refinement: refinement level of the mesh
+    :param nx: number of elements along an edge
     :param parameters: dictionary of solver parameters
     :param k: frequency parameter
     :param delta: shift preconditioning parameter
     :param delta_0: shift problem parameter
     :param degree: degree of CGk
+    :param HSS_method: solver method for HSS problems
+    :param levels: amount of levels in geometric mg
     :return solver: solver object for linear variational problem
     :return w: solution function
     """
-    mesh = fd.UnitSquareMesh(mesh_refinement, mesh_refinement)
+    if HSS_method == "mg":
+        nx = nx // 2**(levels-1)
+        mesh = fd.UnitSquareMesh(nx, nx)
+        hierarchy = fd.MeshHierarchy(mesh, levels-1)
+        mesh = hierarchy[-1]
+    else:
+        mesh = fd.UnitSquareMesh(nx, nx)
 
     x, y = fd.SpatialCoordinate(mesh)
     f = (( -delta_0 + 1j*k)**2 * fd.sin(fd.pi*x)**2 * fd.sin(fd.pi*y)**2

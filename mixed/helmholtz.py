@@ -17,13 +17,16 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         _, P = pc.getOperators()
         context = P.getPythonContext()
         self.context = context
+        bcs = context.bcs
+        dm = pc.getDM()
+        appctx = dmhooks.get_appctx(dm).appctx
 
         # obtaining k, delta and f
-        k = context.appctx.get("k")
+        k = appctx.get("k")
         self.k = k
-        delta = context.appctx.get("delta")
+        delta = appctx.get("delta")
         self.delta = delta
-        f = context.appctx.get("f")
+        f = appctx.get("f")
 
         # initiliazing test and trial functions
         test, trial = context.a.arguments()
@@ -48,7 +51,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         mat_type = opts.getString(options_prefix + "mat_type",
                                   fd.parameters["default_matrix_type"])
 
-        A = fd.assemble(a, form_compiler_parameters=context.fc_params,
+        A = fd.assemble(a, bcs=bcs, form_compiler_parameters=context.fc_params,
                      mat_type=mat_type, options_prefix=options_prefix)
 
         Pmat = A.petscmat
@@ -56,23 +59,25 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         tnullsp = P.getTransposeNullSpace()
         if tnullsp.handle != 0:
             Pmat.setTransposeNullSpace(tnullsp)
-        dm = W.dm
         
         ksp = PETSc.KSP().create(comm=pc.comm)
         ksp.setDM(dm)
-        ksp.setDMActive(False)
+        ksp.setDMActive(True)
         ksp.incrementTabLevel(1, parent=pc)
         ksp.setOperators(Pmat)
         ksp.setOptionsPrefix(options_prefix)
-        with dmhooks.add_hooks(dm, self, appctx=context.appctx, save=False):
+
+        fcp = self.context.fc_params
+        self._ctx_ref = self.new_snes_ctx(pc, a, bcs, mat_type,
+                                          fcp=fcp, options_prefix=options_prefix)
+        with dmhooks.add_hooks(dm, self, appctx=self._ctx_ref, save=False):
             ksp.setFromOptions()  # ensures appctx is passed on to the next ksp and pc
-        ksp.setUp()
         self.ksp = ksp
 
         # initializing self.hss_rhs for multiple iterations
         self.w = fd.Function(W)  # to store solution every HSS iteration
         self.q = fd.Function(W)  # to assemble self.hss_rhs into
-        self.its = PETSc.Options().getInt(options_prefix + "its")
+        self.its = PETSc.Options().getInt(options_prefix + "its", 1)
 
         w_old = fd.Function(W)
         self.w_old = w_old
@@ -91,11 +96,14 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         """
         Based on asQ/asQ/diag_preconditioner.py
         """
+        dm = pc.getDM()
+
         k = fd.Constant(self.k)
         #first solve
         self.w.assign(0)
         with self.w.dat.vec_wo as w_:
-            self.ksp.solve(X, w_)  # b = inner(f, v) is the only RHS term because x^0 = 0
+            with dmhooks.add_hooks(dm, self, appctx=self._ctx_ref):
+                self.ksp.solve(X, w_)  # b = inner(f, v) is the only RHS term because x^0 = 0
 
         #all other solves
         for i in range(self.its - 1):
@@ -116,7 +124,7 @@ class HSS_PC(fd.preconditioners.base.PCBase):
     
     def view(self, pc, viewer=None):
         super(HSS_PC, self).view(pc, viewer)
-        viewer.printfASCII("HSS preconditioner for the mixed formulation of the indefinite Helmholtz equation")
+        viewer.printfASCII("HSS preconditioner for the mixed formulation of the indefinite Helmholtz equation \n")
         self.ksp.view(viewer)
 
 
