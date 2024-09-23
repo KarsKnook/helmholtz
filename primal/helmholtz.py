@@ -3,6 +3,11 @@ from firedrake.petsc import PETSc
 from firedrake import dmhooks
 
 
+class LinearTransferManager(fd.TransferManager):
+    def inject(self, source, target):
+        return
+
+
 class HSS_PC(fd.preconditioners.base.PCBase):
     """
     HSS preconditioner for the primal formulation of the indefinite helmholtz equation
@@ -102,9 +107,11 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         #all other solves
         for i in range(self.its - 1):
             self.u_old.assign(self.w)
+            # TODO we can store the assembler directly when initializing
             fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.q)
 
             self.w.assign(0)
+            # TODO should we use the dmhooks context for both ksp solves?
             with self.w.dat.vec_wo as w_, self.q.dat.vec_ro as q_:
                 q_.axpy(2*k/(k+1), X)  # corresponds to self.hss_rhs + inner(f,v)
                 self.ksp.solve(q_, w_)
@@ -119,4 +126,5 @@ class HSS_PC(fd.preconditioners.base.PCBase):
     def view(self, pc, viewer=None):
         super(HSS_PC, self).view(pc, viewer)
         viewer.printfASCII("HSS preconditioner for the primal formulation of the indefinite helmholtz equation \n")
-        self.ksp.view(viewer)
+        if hasattr(self, "ksp"):
+            self.ksp.view(viewer)

@@ -108,9 +108,11 @@ class HSS_PC(fd.preconditioners.base.PCBase):
         #all other solves
         for i in range(self.its - 1):
             self.w_old.assign(self.w)
+            # TODO we can store the assembler directly when initializing
             fd.assemble(self.hss_rhs, form_compiler_parameters=self.context.fc_params, tensor=self.q)
             
             self.w.assign(0)
+            # TODO should we use the dmhooks context for both ksp solves?
             with self.w.dat.vec_wo as w_, self.q.dat.vec_ro as q_:
                 q_.axpy(2*k/(k+1), X)  # corresponds to self.hss_rhs + inner(f,v)
                 self.ksp.solve(q_, w_)

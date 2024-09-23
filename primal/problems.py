@@ -3,29 +3,6 @@ import warnings
 import numpy as np
 warnings.simplefilter('ignore')  # to suppress the ComplexWarning in errornorm
 
-class CustomTransferManager(fd.TransferManager):
-
-    def prolong(self, source, target):
-        # Vc -> Vf
-        try:
-            super(CustomTransferManager, self).prolong(source, target)
-        except NotImplementedError:
-            pass
-
-    def restrict(self, source, target):
-        # Vf^* -> Vc^*
-        try:
-            super(CustomTransferManager, self).restrict(source, target)
-        except NotImplementedError:
-            pass
-
-    def inject(self, source, target):
-        # Vf-> Vc
-        try:
-            super(CustomTransferManager, self).inject(source, target)
-        except NotImplementedError:
-            pass
-
 def helmholtz_LHS(u, v, k, delta_0):
     """
     Assembles the LHS of the primal formulation of the Helmholtz equation
@@ -84,8 +61,6 @@ def build_problem(mesh, f, parameters, k, delta, delta_0, degree):
     vpb = fd.LinearVariationalProblem(a, L, w)
     solver = fd.LinearVariationalSolver(vpb, solver_parameters=parameters, appctx=appctx, options_prefix="")
 
-    transfer = CustomTransferManager()
-    solver.set_transfer_manager(transfer)
     return solver, w
 
 
